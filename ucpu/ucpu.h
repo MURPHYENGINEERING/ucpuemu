@@ -73,6 +73,7 @@ void fetch(UCPU* cpu, uint32_t* mem);
 
 // Stores the microcode instructions that drive the CPU
 extern uint64_t urom[];
+extern uint32_t mem[];
 
 // Map an opcode to an offset into the microcode ROM where that opcode's
 // implementation begins.

@@ -4,12 +4,14 @@
 #include <stdlib.h>
 
 
+uint32_t mem[MEM_SIZE];
+
+
 int main(int argc, char* argv[])
 {
   printf("Hello, ucpu!\n\n");
 
   UCPU cpu;
-  uint32_t mem[MEM_SIZE];
 
   if (load_rom(mem, "prog.rom") < 0) {
     return 1;
