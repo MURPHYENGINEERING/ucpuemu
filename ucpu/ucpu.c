@@ -42,6 +42,7 @@ void reset(UCPU* cpu)
   cpu->sp = MEM_SIZE-1;
 }
 
+size_t draw_skip = 0;
 
 void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
 {
@@ -49,61 +50,65 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   cpu->sig = urom[cpu->uip];
 
   // OUT to the bus
-  if (cpu->sig & SIG_halt)  { printf("halt\n"); return; }
-  if (cpu->sig & SIG_fetch) { printf("gofetch\n"); cpu->uip = 0; return; }
-  if (cpu->sig & SIG_id2uip) { printf("id2uip\n"); cpu->uip = op_to_uip(cpu->ir); return; }
-  if (cpu->sig & SIG_BCpc)  { cpu->dbus = cpu->pc; printf("BCpc "); }
-  if (cpu->sig & SIG_BCmem) { cpu->dbus = mem[cpu->mar]; printf("BCmem "); }
-  if (cpu->sig & SIG_BCsp)  { cpu->dbus = cpu->sp; printf("BCsp "); }
-  if (cpu->sig & SIG_BCr)   { cpu->dbus = cpu->regs[cpu->r]; printf("BCr "); }
-  if (cpu->sig & SIG_BCs)   { cpu->dbus = cpu->s; printf("BCs "); }
-  if (cpu->sig & SIG_BCz)   { cpu->dbus = cpu->z; printf("BCz "); }
-  if (cpu->sig & SIG_BCreg) { cpu->dbus = cpu->regs[cpu->reg]; printf("BCreg "); }
+  if (cpu->sig & SIG_halt)  { return; }
+  if (cpu->sig & SIG_fetch) { 
+    cpu->uip = 0; 
+    if (!window_process_events(wnd, mem)) {
+      cpu->sig = SIG_halt;
+      return;
+    }
+    if (draw_skip++ > 10) {
+      window_draw(wnd, mem); 
+      draw_skip = 0;
+    }
+    return; 
+  }
+  if (cpu->sig & SIG_id2uip) { cpu->uip = op_to_uip(cpu->ir); return; }
+  if (cpu->sig & SIG_BCpc)  { cpu->dbus = cpu->pc; }
+  if (cpu->sig & SIG_BCmem) { cpu->dbus = mem[cpu->mar]; }
+  if (cpu->sig & SIG_BCsp)  { cpu->dbus = cpu->sp; }
+  if (cpu->sig & SIG_BCr)   { cpu->dbus = cpu->regs[cpu->r]; }
+  if (cpu->sig & SIG_BCs)   { cpu->dbus = cpu->s; }
+  if (cpu->sig & SIG_BCz)   { cpu->dbus = cpu->z; }
+  if (cpu->sig & SIG_BCreg) { cpu->dbus = cpu->regs[cpu->reg]; }
 
   // ALU
   cpu->z = 0;
-  if (cpu->sig & SIG_aluinc) { cpu->z = cpu->dbus + 1; printf("aluinc "); }
-  if (cpu->sig & SIG_aludec) { cpu->z = cpu->dbus - 1; printf("aludec "); }
-  if (cpu->sig & SIG_aluadd) { cpu->z = cpu->dbus + cpu->s; printf("aluadd "); }
-  if (cpu->sig & SIG_alusub) { cpu->z = cpu->dbus - cpu->s; printf("alusub "); }
-  if (cpu->sig & SIG_alumul) { cpu->z = cpu->dbus * cpu->s; printf("alumul "); }
-  if (cpu->sig & SIG_aludiv) { cpu->z = cpu->dbus / cpu->s; printf("aludiv "); }
-  if (cpu->sig & SIG_aluand) { cpu->z = cpu->dbus & cpu->s; printf("aluand "); }
-  if (cpu->sig & SIG_aluor)  { cpu->z = cpu->dbus | cpu->s; printf("aluor "); }
-  if (cpu->sig & SIG_aluxor) { cpu->z = cpu->dbus ^ cpu->s; printf("aluxor "); }
-  if (cpu->sig & SIG_alueq)  { cpu->z = (cpu->dbus == cpu->s) ? cpu->cmp : cpu->ncmp; printf("alueq "); }
-  if (cpu->sig & SIG_alugr)  { cpu->z = (cpu->dbus > cpu->s) ? cpu->cmp : cpu->ncmp; printf("alugr "); }
-  if (cpu->sig & SIG_aluz)   { cpu->z = (cpu->dbus == 0) ? cpu->cmp : cpu->ncmp; printf("aluz "); }
-  if (cpu->sig & SIG_alushl) { cpu->z = cpu->dbus << cpu->s; printf("alushl "); }
-  if (cpu->sig & SIG_alushr) { cpu->z = cpu->dbus >> cpu->s; printf("alushr "); }
+  if (cpu->sig & SIG_aluinc) { cpu->z = cpu->dbus + 1; }
+  if (cpu->sig & SIG_aludec) { cpu->z = cpu->dbus - 1; }
+  if (cpu->sig & SIG_aluadd) { cpu->z = cpu->dbus + cpu->s; }
+  if (cpu->sig & SIG_alusub) { cpu->z = cpu->dbus - cpu->s; }
+  if (cpu->sig & SIG_alumul) { cpu->z = cpu->dbus * cpu->s; }
+  if (cpu->sig & SIG_aludiv) { cpu->z = cpu->dbus / cpu->s; }
+  if (cpu->sig & SIG_aluand) { cpu->z = cpu->dbus & cpu->s; }
+  if (cpu->sig & SIG_aluor)  { cpu->z = cpu->dbus | cpu->s; }
+  if (cpu->sig & SIG_aluxor) { cpu->z = cpu->dbus ^ cpu->s; }
+  if (cpu->sig & SIG_alueq)  { cpu->z = (cpu->dbus == cpu->s) ? cpu->cmp : cpu->ncmp; }
+  if (cpu->sig & SIG_alugr)  { cpu->z = (cpu->dbus > cpu->s) ? cpu->cmp : cpu->ncmp; }
+  if (cpu->sig & SIG_aluz)   { cpu->z = (cpu->dbus == 0) ? cpu->cmp : cpu->ncmp; }
+  if (cpu->sig & SIG_alushl) { cpu->z = cpu->dbus << cpu->s; }
+  if (cpu->sig & SIG_alushr) { cpu->z = cpu->dbus >> cpu->s; }
 
   // IN from the bus
-  if (cpu->sig & SIG_MEMen) { mem[cpu->mar] = cpu->dbus; printf("MEMen "); }
-  if (cpu->sig & SIG_MARen) { cpu->mar = cpu->dbus; printf("MARen "); }
-  if (cpu->sig & SIG_PCen)  { cpu->pc = cpu->dbus; printf("PCen "); }
-  if (cpu->sig & SIG_IRen)  { cpu->ir = cpu->dbus; cpu->reg = cpu->ir & 0b11; printf("IRen "); }
-  if (cpu->sig & SIG_Zen)   { /*cpu->z = cpu->aluout;*/ printf("Zen "); }
-  if (cpu->sig & SIG_REGen) { cpu->regs[cpu->reg] = cpu->dbus; printf("REGen "); }
-  if (cpu->sig & SIG_Sen)   { cpu->s = cpu->dbus; printf("Sen "); }
-  if (cpu->sig & SIG_Ren)   { cpu->r = cpu->dbus; printf("Ren "); }
-  if (cpu->sig & SIG_CMPen) { cpu->cmp = cpu->dbus; printf("CMPen "); }
-  if (cpu->sig & SIG_NCMPen){ cpu->ncmp = cpu->dbus; printf("NCMPen "); }
-  if (cpu->sig & SIG_push)  { --cpu->sp; printf("push "); }
-  if (cpu->sig & SIG_pop)   { ++cpu->sp; printf("pop "); }
+  if (cpu->sig & SIG_MEMen) { mem[cpu->mar] = cpu->dbus; }
+  if (cpu->sig & SIG_MARen) { cpu->mar = cpu->dbus; }
+  if (cpu->sig & SIG_PCen)  { cpu->pc = cpu->dbus; }
+  if (cpu->sig & SIG_IRen)  { cpu->ir = cpu->dbus; cpu->reg = cpu->ir & 0b11; }
+  if (cpu->sig & SIG_Zen)   { /*cpu->z = cpu->aluout;*/ }
+  if (cpu->sig & SIG_REGen) { cpu->regs[cpu->reg] = cpu->dbus; }
+  if (cpu->sig & SIG_Sen)   { cpu->s = cpu->dbus; }
+  if (cpu->sig & SIG_Ren)   { cpu->r = cpu->dbus; }
+  if (cpu->sig & SIG_CMPen) { cpu->cmp = cpu->dbus; }
+  if (cpu->sig & SIG_NCMPen){ cpu->ncmp = cpu->dbus; }
+  if (cpu->sig & SIG_push)  { --cpu->sp; }
+  if (cpu->sig & SIG_pop)   { ++cpu->sp; }
 
-  printf("\n");
+  //printf("\n");
 
-  dump_cpu(cpu);
+  //dump_cpu(cpu);
 
   // Iterate the microinstruction machine
   ++cpu->uip;
-
-  if (!window_process_events(wnd, mem)) {
-    cpu->sig = SIG_halt;
-    return;
-  }
-
-  window_draw(wnd, mem);
 }
 
 

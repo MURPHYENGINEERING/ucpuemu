@@ -1,5 +1,5 @@
-  ldi c 10
-  ldi d 0
+  ldi c 38400
+  ldi d 0xFFFF
   ldi a 0x400
 clear_screen_loop:
   rstore a d
