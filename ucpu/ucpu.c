@@ -34,10 +34,6 @@ void reset(UCPU* cpu)
 
 void clock(UCPU* cpu, uint32_t* mem)
 {
-  // Fetch the instruction at PC
-  //cpu->ir = urom[cpu->pc];
-  
-
   // Look up the signal encoded by the current microcode instruction
   cpu->sig = urom[cpu->uip];
 
