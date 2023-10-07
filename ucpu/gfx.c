@@ -50,11 +50,9 @@ int process_window_events(CPU_Window* wnd, uint32_t* mem)
       vkey = (VirtualKey) key.sym;
       switch (vkey) {
         case VK_LEFT:
-        printf("KEY DOWN: Left\n");
         mem[0xffc] = 1;
         break;
         case VK_RIGHT: 
-        printf("KEY DOWN: Right\n");
         mem[0xffb] = 1;
         break;
         default:
@@ -69,11 +67,9 @@ int process_window_events(CPU_Window* wnd, uint32_t* mem)
       vkey = (VirtualKey) key.sym;
       switch (vkey) {
         case VK_LEFT:
-        printf("KEY UP: Left\n");
         mem[0xffc] = 0;
         break;
         case VK_RIGHT: 
-        printf("KEY UP: Right\n");
         mem[0xffb] = 0;
         break;
         default:
