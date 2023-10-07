@@ -7,3 +7,5 @@ Build a program ROM using the assembler, uasm:
 Run the CPU emulator:
 
 `ucpu/build/ucpu`
+
+Result: `0xA` in `R0`
