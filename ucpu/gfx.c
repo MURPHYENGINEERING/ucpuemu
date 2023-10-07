@@ -1,4 +1,5 @@
 #include "gfx.h"
+#include "keyboard.h"
 #include <SDL.h>
 
 
@@ -26,9 +27,12 @@ int window_create(CPU_Window* wnd)
   return 1;
 }
 
-int process_window_events(CPU_Window* wnd)
+int process_window_events(CPU_Window* wnd, uint32_t* mem)
 {
   SDL_Event e;
+  SDL_Keysym key;
+  VirtualKey vkey;
+
   while (SDL_PollEvent(&e)) {
     switch (e.type) {
       case SDL_QUIT:
@@ -39,6 +43,41 @@ int process_window_events(CPU_Window* wnd)
       switch (((SDL_WindowEvent*)&e)->event) {
         case SDL_WINDOWEVENT_ENTER: SDL_ShowCursor(0); break;
         case SDL_WINDOWEVENT_LEAVE: SDL_ShowCursor(1); break;
+      }
+
+      case SDL_KEYDOWN:
+      key = ((SDL_KeyboardEvent*)&e)->keysym;
+      vkey = (VirtualKey) key.sym;
+      switch (vkey) {
+        case VK_LEFT:
+        printf("KEY DOWN: Left\n");
+        mem[0xffc] = 1;
+        break;
+        case VK_RIGHT: 
+        printf("KEY DOWN: Right\n");
+        mem[0xffb] = 1;
+        break;
+        default:
+        break;
+        case VK_ESCAPE:
+        return 0;
+      }
+      break;
+
+      case SDL_KEYUP:
+      key = ((SDL_KeyboardEvent*)&e)->keysym;
+      vkey = (VirtualKey) key.sym;
+      switch (vkey) {
+        case VK_LEFT:
+        printf("KEY UP: Left\n");
+        mem[0xffc] = 0;
+        break;
+        case VK_RIGHT: 
+        printf("KEY UP: Right\n");
+        mem[0xffb] = 0;
+        break;
+        default:
+        break;
       }
       break;
     }

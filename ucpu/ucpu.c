@@ -32,10 +32,6 @@ int main(int argc, char* argv[])
     clock_cpu(&cpu, mem, &wnd);
   }
 
-  // Keep running until the window is closed
-  while (process_window_events(&wnd)) {
-  }
-
   return 0;
 }
 
@@ -102,7 +98,7 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   // Iterate the microinstruction machine
   ++cpu->uip;
 
-  if (!process_window_events(wnd)) {
+  if (!process_window_events(wnd, mem)) {
     cpu->sig = SIG_halt;
     return;
   }

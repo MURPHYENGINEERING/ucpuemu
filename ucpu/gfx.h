@@ -14,7 +14,7 @@ typedef struct {
 
 
 int window_create(CPU_Window* wnd);
-int process_window_events(CPU_Window* wnd);
+int process_window_events(CPU_Window* wnd, uint32_t* mem);
 
 
 #endif

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #define N_REGISTERS 4
-#define MEM_SIZE 32
+#define MEM_SIZE 4096
 
 typedef struct {
   // Program Counter register
