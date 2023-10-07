@@ -29,5 +29,5 @@ fun:
   ret
 
 myvar:
-  word 0xDEADBEEF ; allocate 8 bits at a named location
+  word 0xDEADBEEF ; allocate 32 bits at a named location
 ```
