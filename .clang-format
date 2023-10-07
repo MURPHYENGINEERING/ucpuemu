@@ -1,0 +1,60 @@
+﻿---
+BasedOnStyle: WebKit
+AccessModifierOffset: -2
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignConsecutiveAssignments: 'AcrossComments'
+AlwaysBreakAfterReturnType: TopLevelDefinitions
+AlwaysBreakTemplateDeclarations: 'Yes'
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: All
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+BinPackArguments: false
+BinPackParameters: false
+AlignAfterOpenBracket: AlwaysBreak
+BreakBeforeBraces: Linux
+ReflowComments: true
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+ColumnLimit: 80
+CompactNamespaces: true
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+ExperimentalAutoDetectBinPacking: false
+IndentCaseLabels: false
+IndentWidth: 2
+Language: Cpp
+MaxEmptyLinesToKeep: 3
+NamespaceIndentation: Inner
+IndentPPDirectives: BeforeHash
+PointerAlignment: Left
+SpaceAfterCStyleCast: true
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+PenaltyExcessCharacter: 55
+PenaltyBreakString: 75
+SpaceInEmptyBlock: false
+Standard: c++20
+TabWidth: 2
+UseTab: Never
+AlignEscapedNewlines: Right
+AlignTrailingComments: true
+BreakBeforeConceptDeclarations: true
+BraceWrapping:
+  AfterClass: true
+  AfterEnum: true
+  AfterNamespace: false
+  SplitEmptyRecord: false
+  SplitEmptyFunction: false
+  SplitEmptyNamespace: true
+
+...
