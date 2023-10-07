@@ -32,13 +32,6 @@ void reset(UCPU* cpu)
 }
 
 
-void fetch(UCPU* cpu, uint32_t* mem)
-{
-  cpu->ir = mem[cpu->pc];
-  cpu->uip = op_to_uip(cpu->ir);
-}
-
-
 void clock(UCPU* cpu, uint32_t* mem)
 {
   // Fetch the instruction at PC
