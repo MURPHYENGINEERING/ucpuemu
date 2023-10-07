@@ -98,10 +98,12 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   // Iterate the microinstruction machine
   ++cpu->uip;
 
-  if (!process_window_events(wnd, mem)) {
+  if (!window_process_events(wnd, mem)) {
     cpu->sig = SIG_halt;
     return;
   }
+
+  window_draw(wnd, mem);
 }
 
 
