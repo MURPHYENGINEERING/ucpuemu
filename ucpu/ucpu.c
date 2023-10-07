@@ -1,4 +1,5 @@
 #include "ucpu.h"
+#include "gfx.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -13,14 +14,26 @@ int main(int argc, char* argv[])
 
   UCPU cpu;
 
-  if (load_rom(mem, "prog.rom") < 0) {
-    return 1;
+  if (!load_rom(mem, "prog.rom")) {
+    return -1;
   }
 
   reset(&cpu);
 
+  CPU_Window wnd;
+  wnd.title = "UCPUEMU - Matt Murphy";
+  wnd.width = 640;
+  wnd.height = 480;
+  if (!window_create(&wnd)) {
+    return -1;
+  }
+
   while (!(cpu.sig & SIG_halt)) {
-    clock(&cpu, mem);
+    clock_cpu(&cpu, mem, &wnd);
+  }
+
+  // Keep running until the window is closed
+  while (process_window_events(&wnd)) {
   }
 
   return 0;
@@ -34,7 +47,7 @@ void reset(UCPU* cpu)
 }
 
 
-void clock(UCPU* cpu, uint32_t* mem)
+void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
 {
   // Look up the signal encoded by the current microcode instruction
   cpu->sig = urom[cpu->uip];
@@ -88,6 +101,11 @@ void clock(UCPU* cpu, uint32_t* mem)
 
   // Iterate the microinstruction machine
   ++cpu->uip;
+
+  if (!process_window_events(wnd)) {
+    cpu->sig = SIG_halt;
+    return;
+  }
 }
 
 
@@ -98,13 +116,13 @@ int load_rom(uint32_t* mem, char* path)
   FILE* f = fopen(path, "r");
   if (!f) {
     printf("Invalid ROM path: %s\n", path);
-    return -1;
+    return 0;
   }
 
   size_t nread = fread(mem, 4, MEM_SIZE, f);
   if (nread == MEM_SIZE) {
     printf("ROM file overflowed memory!\n");
-    return -1;
+    return 0;
   }
   printf("Read %lu words from ROM file (%s)\n", nread, path);
 
@@ -117,7 +135,7 @@ int load_rom(uint32_t* mem, char* path)
   }
   printf("\n---------------------------------------\n\n");
 
-  return 0;
+  return 1;
 }
 
 

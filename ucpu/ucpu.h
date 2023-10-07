@@ -1,6 +1,8 @@
 #ifndef UCPU_H
 #define UCPU_H
 
+#include "gfx.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -62,10 +64,7 @@ void dump_cpu(UCPU* cpu);
 // Reset the CPU to its initial state (zero all)
 void reset(UCPU* cpu);
 // Execute one clock cycle, iterating the microcode machine
-void clock(UCPU* cpu, uint32_t* mem);
-// Fetch the next instruction from memory
-void fetch(UCPU* cpu, uint32_t* mem);
-
+void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd);
 
 /*******************************************************************************
  * Microcode
