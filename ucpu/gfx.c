@@ -55,6 +55,8 @@ int process_window_events(CPU_Window* wnd, uint32_t* mem)
         case VK_RIGHT: 
         mem[0xffb] = 1;
         break;
+        case VK_SPACE:
+        mem[0xffd] = 1;
         default:
         break;
         case VK_ESCAPE:
@@ -72,6 +74,8 @@ int process_window_events(CPU_Window* wnd, uint32_t* mem)
         case VK_RIGHT: 
         mem[0xffb] = 0;
         break;
+        case VK_SPACE:
+        mem[0xffd] = 0;
         default:
         break;
       }
