@@ -24,7 +24,7 @@ prog.asm:
   halt            ; result: A = 10, B = 3
 
 fun: 
-  ldi   a 3       ; interfere with register A
+  ldi   a 3       ; interfere with register A to demonstrate push/pop
   store myvar a   ; write A into memory at myvar
   ret
 
