@@ -1,5 +1,11 @@
 # ucpuemu
 
+ucpuemu emulates a microcoded CPU architecture I developed for FPGA. 
+
+The CPU supports 29 instructions including `call/ret`, `push/pop`, arithmetic, and jumps, as well as named variables.
+
+---
+
 Build a program ROM using the assembler, uasm:
 
 `uasm/build/uasm prog.asm prog.rom`
