@@ -95,13 +95,29 @@ void window_draw(CPU_Window* wnd, uint32_t* mem)
   SDL_RenderClear(wnd->renderer);
   SDL_SetRenderDrawColor(wnd->renderer, 255, 255, 255, 255);
 
-  for (size_t y = 0; y < 60; ++y) {
+  /*
+  for (size_t y = 0; y < 480; ++y) {
     for (size_t x = 0; x < 80; ++x) {
       size_t iword = y * x;
       uint32_t word = mem[0x400 + iword];
       for (size_t ipx = 0; ipx < 8; ++ipx) {
         if ((word >> ipx) & 1)
-          SDL_RenderDrawPoint(wnd->renderer, x*8 + ipx, y*8);
+          SDL_RenderDrawPoint(wnd->renderer, x*8 + ipx, y);
+      }
+    }
+  }
+  */
+  uint32_t x = 0, y = 0;
+  for (size_t i = 0; i < 38400; ++i) {
+    ++x;
+    if (x == 640) {
+      x = 0;
+      ++y;
+    }
+    uint32_t word = mem[0x400 + i];
+    for (size_t ipx = 0; ipx < 8; ++ipx) {
+      if ((word >> ipx) & 1) {
+        SDL_RenderDrawPoint(wnd->renderer, x+(8-ipx), y);
       }
     }
   }

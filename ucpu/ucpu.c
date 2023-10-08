@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
   reset(&cpu);
 
   CPU_Window wnd;
-  wnd.title = "UCPUEMU - Matt Murphy";
+  wnd.title = "uCPUEMU - Matt Murphy";
   wnd.width = 640;
   wnd.height = 480;
   if (!window_create(&wnd)) {
@@ -57,20 +57,20 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
       cpu->sig = SIG_halt;
       return;
     }
-    if (draw_skip++ > 10) {
-      window_draw(wnd, mem); 
+    if (draw_skip++ > 1000) {
+      //window_draw(wnd, mem); 
       draw_skip = 0;
     }
     return; 
   }
-  if (cpu->sig & SIG_id2uip) { cpu->uip = op_to_uip(cpu->ir); return; }
-  if (cpu->sig & SIG_BCpc)  { cpu->dbus = cpu->pc; }
-  if (cpu->sig & SIG_BCmem) { cpu->dbus = mem[cpu->mar]; }
-  if (cpu->sig & SIG_BCsp)  { cpu->dbus = cpu->sp; }
-  if (cpu->sig & SIG_BCr)   { cpu->dbus = cpu->regs[cpu->r]; }
-  if (cpu->sig & SIG_BCs)   { cpu->dbus = cpu->s; }
-  if (cpu->sig & SIG_BCz)   { cpu->dbus = cpu->z; }
-  if (cpu->sig & SIG_BCreg) { cpu->dbus = cpu->regs[cpu->reg]; }
+  if (cpu->sig & SIG_id2uip) { cpu->uip  = op_to_uip(cpu->ir); return; }
+  if (cpu->sig & SIG_BCpc)   { cpu->dbus = cpu->pc; }
+  if (cpu->sig & SIG_BCmem)  { cpu->dbus = mem[cpu->mar]; }
+  if (cpu->sig & SIG_BCsp)   { cpu->dbus = cpu->sp; }
+  if (cpu->sig & SIG_BCr)    { cpu->dbus = cpu->regs[cpu->r]; }
+  if (cpu->sig & SIG_BCs)    { cpu->dbus = cpu->s; }
+  if (cpu->sig & SIG_BCz)    { cpu->dbus = cpu->z; }
+  if (cpu->sig & SIG_BCreg)  { cpu->dbus = cpu->regs[cpu->reg]; }
 
   // ALU
   cpu->z = 0;
