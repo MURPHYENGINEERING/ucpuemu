@@ -50,7 +50,6 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   cpu->sig = urom[cpu->uip];
 
   // OUT to the bus
-  if (cpu->sig & SIG_halt)  { return; }
   if (cpu->sig & SIG_fetch) { 
     cpu->uip = 0; 
     if (draw_skip++ > 10000) {
@@ -63,6 +62,7 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
     }
     return; 
   }
+  if (cpu->sig & SIG_halt)  { return; }
   if (cpu->sig & SIG_id2uip) { cpu->uip  = op_to_uip(cpu->ir); return; }
   if (cpu->sig & SIG_BCpc)   { cpu->dbus = cpu->pc; }
   if (cpu->sig & SIG_BCmem)  { cpu->dbus = mem[cpu->mar]; }
