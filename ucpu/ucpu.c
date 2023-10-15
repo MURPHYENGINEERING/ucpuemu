@@ -52,7 +52,7 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   // OUT to the bus
   if (cpu->sig & SIG_fetch) { 
     cpu->uip = 0; 
-    if (draw_skip++ > 10000) {
+    if (draw_skip++ > 100000) {
       if (!window_process_events(wnd, mem)) {
         cpu->sig = SIG_halt;
         return;
