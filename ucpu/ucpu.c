@@ -130,6 +130,7 @@ int load_rom(uint32_t* mem, char* path)
   }
   printf("Read %lu words from ROM file (%s)\n", nread, path);
 
+  /*
   printf("---------------------------------------");
   for (size_t memp = 0; memp < MEM_SIZE; ++memp) {
     if (memp % 8 == 0) {
@@ -138,6 +139,7 @@ int load_rom(uint32_t* mem, char* path)
     printf("%04x ", mem[memp]);
   }
   printf("\n---------------------------------------\n\n");
+  */
 
   return 1;
 }
