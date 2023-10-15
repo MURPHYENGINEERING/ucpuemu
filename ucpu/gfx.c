@@ -108,7 +108,8 @@ void window_draw(CPU_Window* wnd, uint32_t* mem)
   }
   */
   uint32_t x = 0, y = 0;
-  for (size_t i = 0; i < 38400; ++i) {
+  // I don't know why it needs to be offset by 1000 to line up in the window :(
+  for (size_t i = 1000; i < 38400; ++i) {
     x += 8;
     if (x >= 640) {
       x = 0;
