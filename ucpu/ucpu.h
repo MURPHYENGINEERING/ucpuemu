@@ -5,7 +5,8 @@
 #include <stdlib.h>
 
 #define N_REGISTERS 4
-#define MEM_SIZE 4096+38400+1
+// Program ROM + framebuffer
+#define MEM_SIZE 4096+38400
 
 struct UCPU
 {
