@@ -53,12 +53,12 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   if (cpu->sig & SIG_halt)  { return; }
   if (cpu->sig & SIG_fetch) { 
     cpu->uip = 0; 
-    if (!window_process_events(wnd, mem)) {
-      cpu->sig = SIG_halt;
-      return;
-    }
-    if (draw_skip++ > 1000) {
-      //window_draw(wnd, mem); 
+    if (draw_skip++ > 10000) {
+      if (!window_process_events(wnd, mem)) {
+        cpu->sig = SIG_halt;
+        return;
+      }
+      window_draw(wnd, mem); 
       draw_skip = 0;
     }
     return; 
