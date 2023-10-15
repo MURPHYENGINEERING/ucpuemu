@@ -94,7 +94,8 @@ void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
   if (cpu->sig & SIG_MARen) { cpu->mar = cpu->dbus; }
   if (cpu->sig & SIG_PCen)  { cpu->pc = cpu->dbus; }
   if (cpu->sig & SIG_IRen)  { cpu->ir = cpu->dbus; cpu->reg = cpu->ir & 0b11; }
-  if (cpu->sig & SIG_Zen)   { /*cpu->z = cpu->aluout;*/ }
+  // We set Z directly in the ALU instructions instead of needing Zen
+  //if (cpu->sig & SIG_Zen)   { cpu->z = cpu->aluout; }
   if (cpu->sig & SIG_REGen) { cpu->regs[cpu->reg] = cpu->dbus; }
   if (cpu->sig & SIG_Sen)   { cpu->s = cpu->dbus; }
   if (cpu->sig & SIG_Ren)   { cpu->r = cpu->dbus; }
