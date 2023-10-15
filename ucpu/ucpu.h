@@ -1,15 +1,14 @@
 #ifndef UCPU_H
 #define UCPU_H
 
-#include "gfx.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 
 #define N_REGISTERS 4
 #define MEM_SIZE 4096+38400+1
 
-typedef struct {
+struct UCPU
+{
   // Program Counter register
   uint32_t pc;
   // Instruction register
@@ -44,7 +43,7 @@ typedef struct {
   // Decoded microinstruction (from UIP)
   uint64_t sig;
 
-} UCPU;
+};
 
 
 /*******************************************************************************
@@ -60,11 +59,12 @@ int load_rom(uint32_t* mem, char* path);
  */
 
 // Print out the contents of the CPU
-void dump_cpu(UCPU* cpu);
+void dump_cpu(struct UCPU* cpu);
 // Reset the CPU to its initial state (zero all)
-void reset(UCPU* cpu);
+void reset(struct UCPU* cpu);
 // Execute one clock cycle, iterating the microcode machine
-void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd);
+struct CPU_Window;
+void clock_cpu(struct UCPU* cpu, uint32_t* mem, struct CPU_Window* wnd);
 
 /*******************************************************************************
  * Microcode

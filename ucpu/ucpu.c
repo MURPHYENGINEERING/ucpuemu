@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 {
   printf("Hello, ucpu!\n\n");
 
-  UCPU cpu;
+  struct UCPU cpu;
 
   if (!load_rom(mem, "prog.rom")) {
     return -1;
@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 
   reset(&cpu);
 
-  CPU_Window wnd;
+  struct CPU_Window wnd;
   wnd.title = "uCPUEMU - Matt Murphy";
   wnd.width = 640;
   wnd.height = 480;
@@ -36,15 +36,15 @@ int main(int argc, char* argv[])
 }
 
 
-void reset(UCPU* cpu)
+void reset(struct UCPU* cpu)
 {
-  memset(cpu, 0, sizeof(UCPU));
+  memset(cpu, 0, sizeof(struct UCPU));
   cpu->sp = MEM_SIZE-1;
 }
 
 size_t draw_skip = 0;
 
-void clock_cpu(UCPU* cpu, uint32_t* mem, CPU_Window* wnd)
+void clock_cpu(struct UCPU* cpu, uint32_t* mem, struct CPU_Window* wnd)
 {
   // Look up the signal encoded by the current microcode instruction
   cpu->sig = urom[cpu->uip];
@@ -145,7 +145,7 @@ int load_rom(uint32_t* mem, char* path)
 }
 
 
-void dump_cpu(UCPU* cpu)
+void dump_cpu(struct UCPU* cpu)
 {
   printf("---------------------------------------\n");
   printf("  PC: %04x\t IR: %04x\tUIP: %lu\n", cpu->pc, cpu->ir, cpu->uip);

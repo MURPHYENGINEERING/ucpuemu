@@ -3,7 +3,7 @@
 #include <SDL.h>
 
 
-int window_create(CPU_Window* wnd)
+int window_create(struct CPU_Window* wnd)
 {
   SDL_Init(SDL_INIT_VIDEO);
 
@@ -29,7 +29,7 @@ int window_create(CPU_Window* wnd)
   return 1;
 }
 
-int window_process_events(CPU_Window* wnd, uint32_t* mem)
+int window_process_events(struct CPU_Window* wnd, uint32_t* mem)
 {
   SDL_Event e;
   SDL_Keysym key;
@@ -89,7 +89,7 @@ int window_process_events(CPU_Window* wnd, uint32_t* mem)
 }
 
 
-void window_draw(CPU_Window* wnd, uint32_t* mem)
+void window_draw(struct CPU_Window* wnd, uint32_t* mem)
 {
   SDL_SetRenderDrawColor(wnd->renderer, 0, 0, 0, 0);
   SDL_RenderClear(wnd->renderer);
