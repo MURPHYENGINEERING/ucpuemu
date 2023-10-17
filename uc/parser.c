@@ -3,51 +3,69 @@
 #include <string.h>
 
 
-int parse(struct Token *token, struct DAG **outDag)
+int parse(struct Token *t, struct DAG **outDag)
 {
   *outDag = (struct DAG*) malloc(sizeof(struct DAG));
-  struct DAG *dag = *outDag;
-  dag->type = DAG_BLOCK;
-
-  dag->children = (struct DAG*) malloc(sizeof(struct DAG));
+  struct DAG *block = *outDag;
+  block->type = DAG_BLOCK;
 
   // Store tokens we see until we get to one that defines an encapsulating node
-  struct TokenList lhs;
-  memset(&lhs, 0, sizeof(lhs));
+  struct Token lhsTokens;
+  memset(&lhsTokens, 0, sizeof(lhsTokens));
 
-  while (token) {
-    if (token->type == TOK_WHITE) {
-      // Ignore whitespace
-    } else if (token->type == TOK_EQUALS) {
-      dag->children->type = DAG_ASSIGNMENT;
-      printf("Tokens on LHS: %u\n", tokens_length(&lhs));
+  while (t) {
+    if (t->type == TOK_EQUALS) {
+      struct DAG *assignment = dag_add_child(block);
+      assignment->type = DAG_ASSIGNMENT;
+      struct DAG *lhs = dag_add_child(assignment);
+      struct DAG *rhs = dag_add_neighbor(lhs);
 
-      if (tokens_length(&lhs) == 2) {
-        dag->children->children = (struct DAG*) malloc(sizeof(struct DAG));
-        struct DAG *def = dag->children->children;
-        def->type = DAG_DEFINITION;
-        def->children = (struct DAG*) malloc(sizeof(struct DAG));
-        def->children->type = DAG_NAME;
-        def->children->token = lhs.value;
-        def->children->next = (struct DAG*) malloc(sizeof(struct DAG));
-        def->children->next->type = DAG_NAME;
-        def->children->next->token = lhs.next->value;
+    } else if (t->type == TOK_SEMICOLON) {
+
+    } else if (t->type == TOK_NAME) {
+      // Keyword search: if, for, while, etc.
+      if (strcmp(t->cvalue, "if") == 0) {
+        t = t->next;
+        if (t->type != TOK_OPENPAREN) {
+          expect("(");
+        }
       }
-    } else if (token->type == TOK_SEMICOLON) {
-      tokens_free(&lhs);
-      memset(&lhs, 0, sizeof(lhs));
+      // Not a keyword... function call?
     } else {
-      tokens_append(&lhs, token);
+      tokens_append(&lhsTokens, t);
+      printf("LHS: %d\n", tokens_length(&lhsTokens));
     }
 
-    token = token->next;
+    t = t->next;
   }
 
   return 0;
 }
 
 
-void dump_dag(struct DAG *dag)
+struct DAG *dag_add_child(struct DAG *parent)
+{
+  parent->child = (struct DAG*) malloc(sizeof(struct DAG));
+  memset(parent->child, 0, sizeof(*parent->child));
+  return parent->child;
+}
+
+
+struct DAG *dag_add_neighbor(struct DAG *to)
+{
+  to->next = (struct DAG*) malloc(sizeof(struct DAG));
+  memset(to->next, 0, sizeof(*to->next));
+  return to->next;
+}
+
+
+void expect(const char *s)
+{
+  printf("! Expected token: %s\n", s);
+}
+
+
+void dag_dump(struct DAG *dag)
 {
   printf("DAG:\n");
   while (dag) {
@@ -64,15 +82,15 @@ void dump_dag(struct DAG *dag)
     default:
     printf("<unknown>\n");
     }
-    if (dag->children) {
-      dump_dag(dag->children);
+    if (dag->child) {
+      dag_dump(dag->child);
     }
     dag = dag->next;
   }
 }
 
 
-size_t tokens_length(struct TokenList *list)
+size_t tokens_length(struct Token *list)
 {
   size_t i = 0;
   while (list) {
@@ -83,32 +101,22 @@ size_t tokens_length(struct TokenList *list)
 }
 
 
-void tokens_append(struct TokenList *list, struct Token *token)
+void tokens_append(struct Token *list, struct Token *t)
 {
-  if (list->value == NULL) {
-    list->value = token;
-    return;
+  if (list->type == TOK_NONE) {
+    memcpy(list, t, sizeof(*list));
   }
   
   while (list->next) {
     list = list->next;
   }
-  list->next = (struct TokenList*) malloc(sizeof(struct TokenList));
-  list->next->value = token;
+  list->next = (struct Token*) malloc(sizeof(struct Token));
+  memcpy(list->next, t, sizeof(*list->next));
   list->next->next = NULL;
-  list->next->prev = list;
 }
 
 
-void tokens_free(struct TokenList *list)
+void tokens_free(struct Token *list)
 {
-  while (list->next) {
-    list = list->next;
-  }
-
-  while (list->prev) {
-    struct TokenList *prev = list->prev;
-    free(list);
-    list = prev;
-  }
+  
 }

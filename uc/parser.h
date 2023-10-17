@@ -7,21 +7,13 @@
 
 struct Token;
 
-
-struct TokenList
-{
-  struct Token *value;
-  struct TokenList *next;
-  struct TokenList *prev;
-};
-
-
 enum DAGType
 {
   DAG_BLOCK,
   DAG_EXPR,
   DAG_DEFINITION,
   DAG_ASSIGNMENT,
+  DAG_SUM,
   DAG_NAME
 };
 
@@ -30,17 +22,22 @@ struct DAG
 {
   enum DAGType type;
   struct Token *token;
-  struct DAG *children;
+  struct DAG *child;
   struct DAG *next;
 };
 
 
 int parse(struct Token *token, struct DAG **outDag);
 
-void tokens_append(struct TokenList *list, struct Token *token);
-size_t tokens_length(struct TokenList *list);
-void tokens_free(struct TokenList *list);
+void tokens_append(struct Token *list, struct Token *t);
+size_t tokens_length(struct Token *list);
+void tokens_free(struct Token *list);
 
-void dump_dag(struct DAG *dag);
+void expect(const char *s);
+
+struct DAG *dag_add_child(struct DAG *parent);
+struct DAG *dag_add_neighbor(struct DAG *to);
+
+void dag_dump(struct DAG *dag);
 
 #endif

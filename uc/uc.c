@@ -13,7 +13,7 @@ static int translate_file(FILE *inFile, FILE *outFile)
     return result;
   }
 
-  dump_tokens(tokens);
+  tokens_dump(tokens);
 
   struct DAG *dag;
   result = parse(tokens, &dag);
@@ -22,7 +22,7 @@ static int translate_file(FILE *inFile, FILE *outFile)
     return result;
   }
 
-  dump_dag(dag);
+  dag_dump(dag);
 
   return 0;
 }

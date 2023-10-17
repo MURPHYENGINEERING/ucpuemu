@@ -62,28 +62,49 @@ static struct Token *read_token(FILE *inFile)
 
   struct Token *t = (struct Token*) malloc(sizeof(struct Token));
   memset(t, 0, sizeof(*t));
+  t->type = TOK_NONE;
 
-  if (c == ' ' || c == '\n') {
-    t->type = TOK_WHITE;
-    skip_white(inFile);
-  } else if (c == '=') {
-    t->type = TOK_EQUALS;
+  switch (c) {
+  case '=': t->type = TOK_EQUALS;       break;
+  case '+': t->type = TOK_PLUS;         break;
+  case '-': t->type = TOK_MINUS;        break;
+  case '*': t->type = TOK_TIMES;        break;
+  case '/': t->type = TOK_DIVIDE;       break;
+  case '^': t->type = TOK_XOR;          break;
+  case '|': t->type = TOK_OR;           break;
+  case '&': t->type = TOK_AND;          break;
+  case '%': t->type = TOK_MOD;          break;
+  case '~': t->type = TOK_INVERT;       break;
+  case '.': t->type = TOK_DOT;          break;
+  case ';': t->type = TOK_SEMICOLON;    break;
+  case '(': t->type = TOK_OPENPAREN;    break;
+  case ')': t->type = TOK_CLOSEPAREN;   break;
+  case '{': t->type = TOK_OPENBRACE;    break;
+  case '}': t->type = TOK_CLOSEBRACE;   break;
+  case '[': t->type = TOK_OPENBRACKET;  break;
+  case ']': t->type = TOK_CLOSEBRACKET; break;
+  case '"': t->type = TOK_DOUBLEQUOTE;  break;
+  case '\'': t->type = TOK_SINGLEQUOTE; break;
+  }
+
+  if (t->type != TOK_NONE) {
+    // Skip a single char token
     fgetc(inFile);
-  } else if (c == '+') {
-    t->type = TOK_PLUS;
-    fgetc(inFile);
-  } else if (c == ';') {
-    t->type = TOK_SEMICOLON;
-    fgetc(inFile);
-  } else if (isalpha(c)) {
-    t->type = TOK_NAME;
-    read_name(inFile, t->cvalue, TOKEN_SIZE_MAX);
-  } else if (isdigit(c)) {
-    t->type = TOK_INT;
-    read_int(inFile, &t->ivalue);
   } else {
-    printf("! Unknown token: %c\n", c);
-    return 0;
+    // Not a single char token
+    if (c == ' ' || c == '\n') {
+      t->type = TOK_WHITE;
+      skip_white(inFile);
+    } else if (isalpha(c)) {
+      t->type = TOK_NAME;
+      read_name(inFile, t->cvalue, TOKEN_SIZE_MAX);
+    } else if (isdigit(c)) {
+      t->type = TOK_INT;
+      read_int(inFile, &t->ivalue);
+    } else {
+      printf("! Unknown token: %c\n", c);
+      return 0;
+    }
   }
 
   return t;
@@ -95,15 +116,18 @@ int tokenize(FILE *inFile, struct Token **outTokens)
   *outTokens = read_token(inFile);
   struct Token *t = *outTokens;
   while (t) {
-    t->next = read_token(inFile);
-    t = t->next;
+    struct Token *newToken = read_token(inFile);
+    if (newToken->type != TOK_WHITE) {
+      t->next = newToken;
+      t = t->next;
+    }
   }
 
   return 0;
 }
 
 
-void dump_tokens(struct Token *tokens)
+void tokens_dump(struct Token *tokens)
 {
   printf("\n");
   while (tokens) {

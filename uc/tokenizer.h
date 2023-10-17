@@ -8,11 +8,29 @@
 #define TOKEN_SIZE_MAX 32
 
 enum TokenType {
+  TOK_NONE = 0,
   TOK_NAME,
   TOK_INT,
   TOK_SEMICOLON,
+  TOK_DOT,
   TOK_EQUALS,
   TOK_PLUS,
+  TOK_MINUS,
+  TOK_TIMES,
+  TOK_DIVIDE,
+  TOK_XOR,
+  TOK_OR,
+  TOK_AND,
+  TOK_MOD,
+  TOK_INVERT,
+  TOK_DOUBLEQUOTE,
+  TOK_SINGLEQUOTE,
+  TOK_OPENPAREN,
+  TOK_CLOSEPAREN,
+  TOK_OPENBRACE,
+  TOK_CLOSEBRACE,
+  TOK_OPENBRACKET,
+  TOK_CLOSEBRACKET,
   TOK_WHITE
 };
 
@@ -26,6 +44,6 @@ struct Token
 
 
 int tokenize(FILE *inFile, struct Token **outTokens);
-void dump_tokens(struct Token* tokens);
+void tokens_dump(struct Token* tokens);
 
 #endif
