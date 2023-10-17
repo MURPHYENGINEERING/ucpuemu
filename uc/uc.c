@@ -4,16 +4,18 @@
 #include <stdio.h>
 
 
-static int translate_file(FILE* inFile, FILE* outFile)
+static int translate_file(FILE *inFile, FILE *outFile)
 {
-  struct Tokens* tokens;
+  struct Token *tokens;
   int result = tokenize(inFile, &tokens);
   if (result != 0) {
     printf("! Error tokenizing input file: %d\n", result);
     return result;
   }
 
-  struct DAG* dag;
+  dump_tokens(tokens);
+
+  struct DAG *dag;
   result = parse(tokens, &dag);
   if (result != 0) {
     printf("! Error parsing token stream: %d\n", result);
@@ -24,10 +26,10 @@ static int translate_file(FILE* inFile, FILE* outFile)
 }
 
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-  char* inFilename;
-  char* outFilename;
+  char *inFilename;
+  char *outFilename;
 
   if (argc < 2) {
     //printf("Usage: uc <input> <output>\n");
@@ -42,13 +44,13 @@ int main(int argc, char* argv[])
   printf("uC - by Matt Murphy\n");
   printf("  Input file:\t\t%s\n  Output file:\t\t%s\n", inFilename, outFilename);
 
-  FILE* inFile = fopen(inFilename, "r");
+  FILE *inFile = fopen(inFilename, "r");
   if (!inFile) {
     printf("\b! Input file does not exist\n\n");
     return 1;
   }
 
-  FILE* outFile = fopen(outFilename, "w");
+  FILE *outFile = fopen(outFilename, "w");
   if (!outFile) {
     printf("\n! Couldn't open output file for writing\n\n");
     fclose(inFile);

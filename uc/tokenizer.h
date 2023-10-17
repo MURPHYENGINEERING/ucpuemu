@@ -4,11 +4,21 @@
 #include <stdio.h>
 
 
-struct Tokens
+enum TokenType {
+  TOK_NAME,
+  TOK_INT,
+  TOK_SEMICOLON,
+  TOK_EQUALS
+};
+
+struct Token
 {
+  enum TokenType type;
+  struct Token *next;
 };
 
 
-int tokenize(FILE* inFile, struct Tokens** outTokens);
+int tokenize(FILE *inFile, struct Token **outTokens);
+void dump_tokens(struct Token* tokens);
 
 #endif
