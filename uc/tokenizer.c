@@ -13,8 +13,8 @@ static size_t read_name(FILE *inFile, char* outName, size_t maxLen)
     outName[i++] = c;
     c = fgetc(inFile);
   }
-  // Don't absorb a nonalphanumeric char if we saw one
-  if (c != EOF && !isalpha(c)) {
+  // Don't absorb the first non-alpha char
+  if (!isalpha(c)) {
     ungetc(c, inFile); 
   }
 
@@ -33,10 +33,9 @@ static size_t read_int(FILE *inFile, uint32_t *outVal)
     buf[i++] = c;
     c = fgetc(inFile);
   }
-  // Don't absorb the EOF if we saw it
-  if (c != EOF) {
-    ungetc(c, inFile);
-  }
+  // Don't absorb the first non-digit char
+  ungetc(c, inFile);
+
   *outVal = atoi(buf);
   return i;
 }
@@ -48,10 +47,8 @@ static void skip_white(FILE *inFile)
   while (c != EOF && (c == ' ' || c == '\n')) {
     c = fgetc(inFile);
   }
-  // Don't absorb the EOF if we saw it
-  if (c != EOF) {
-    ungetc(c, inFile);
-  }
+  // Don't absorb the first non-white char
+  ungetc(c, inFile);
 }
 
 

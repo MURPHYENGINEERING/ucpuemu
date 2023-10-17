@@ -22,6 +22,8 @@ static int translate_file(FILE *inFile, FILE *outFile)
     return result;
   }
 
+  dump_dag(dag);
+
   return 0;
 }
 
