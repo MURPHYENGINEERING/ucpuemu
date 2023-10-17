@@ -5,12 +5,6 @@
 #include <math.h>
 
 
-static void put_back(FILE *inFile)
-{
-  fseek(inFile, -1, SEEK_CUR);
-}
-
-
 static size_t read_name(FILE *inFile, char* outName, size_t maxLen)
 {
   size_t i = 0;
@@ -19,8 +13,9 @@ static size_t read_name(FILE *inFile, char* outName, size_t maxLen)
     outName[i++] = c;
     c = fgetc(inFile);
   }
+  // Don't absorb a nonalphanumeric char if we saw one
   if (c != EOF && !isalpha(c)) {
-    put_back(inFile); 
+    ungetc(c, inFile); 
   }
 
   return i;
@@ -38,8 +33,9 @@ static size_t read_int(FILE *inFile, uint32_t *outVal)
     buf[i++] = c;
     c = fgetc(inFile);
   }
+  // Don't absorb the EOF if we saw it
   if (c != EOF) {
-    put_back(inFile);
+    ungetc(c, inFile);
   }
   *outVal = atoi(buf);
   return i;
@@ -52,8 +48,9 @@ static void skip_white(FILE *inFile)
   while (c != EOF && (c == ' ' || c == '\n')) {
     c = fgetc(inFile);
   }
+  // Don't absorb the EOF if we saw it
   if (c != EOF) {
-    put_back(inFile);
+    ungetc(c, inFile);
   }
 }
 
@@ -64,7 +61,7 @@ static struct Token *read_token(FILE *inFile)
   if (c == EOF) {
     return 0;
   }
-  put_back(inFile);
+  ungetc(c, inFile);
 
   struct Token *t = (struct Token*) malloc(sizeof(struct Token));
   memset(t, 0, sizeof(*t));
