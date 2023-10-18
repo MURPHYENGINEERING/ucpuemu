@@ -29,6 +29,7 @@ struct Token *parse(struct Token *t, struct AST *ast)
             for (size_t i = 0; i < 13; ++i) {
                 if (t->type == tokTypes[i]) {
                     ast->type = astTypes[i];
+                    break;
                 }
             }
             ast->token = t;
