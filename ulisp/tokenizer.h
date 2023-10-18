@@ -34,7 +34,7 @@ enum TokenType {
 struct Token
 {
     enum TokenType type;
-    char cvalue[TOKEN_SIZE_MAX];
+    char cvalue[TOKEN_SIZE_MAX+1];
     uint32_t ivalue;
     struct Token *next;
 };

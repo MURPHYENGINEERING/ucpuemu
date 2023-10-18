@@ -32,6 +32,11 @@ static int translate_file(FILE *inFile, FILE *outFile)
 
     struct Program prog;
     memset(&prog, 0, sizeof(prog));
+    prog->registers[0].name = "a";
+    prog->registers[1].name = "b";
+    prog->registers[2].name = "c";
+    prog->registers[3].name = "d";
+    
     result = compile(&ast, &prog, outFile);
     if (result != 0) {
         printf("! Error compiling program: %d\n", result);
