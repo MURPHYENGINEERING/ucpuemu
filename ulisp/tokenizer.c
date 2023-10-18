@@ -56,35 +56,58 @@ static struct Token *read_token(FILE *inFile)
 {
   int c = fgetc(inFile);
   if (c == EOF) {
-    return 0;
+    return NULL;
   }
   ungetc(c, inFile);
 
   struct Token *t = (struct Token*) malloc(sizeof(struct Token));
   memset(t, 0, sizeof(*t));
-  t->type = TOK_NONE;
 
   switch (c) {
-  case '=': t->type = TOK_EQUALS;       break;
-  case '+': t->type = TOK_PLUS;         break;
-  case '-': t->type = TOK_MINUS;        break;
-  case '*': t->type = TOK_TIMES;        break;
-  case '/': t->type = TOK_DIVIDE;       break;
-  case '^': t->type = TOK_XOR;          break;
-  case '|': t->type = TOK_OR;           break;
-  case '&': t->type = TOK_AND;          break;
-  case '%': t->type = TOK_MOD;          break;
-  case '~': t->type = TOK_INVERT;       break;
-  case '.': t->type = TOK_DOT;          break;
-  case ';': t->type = TOK_SEMICOLON;    break;
-  case '(': t->type = TOK_OPENPAREN;    break;
-  case ')': t->type = TOK_CLOSEPAREN;   break;
-  case '{': t->type = TOK_OPENBRACE;    break;
-  case '}': t->type = TOK_CLOSEBRACE;   break;
-  case '[': t->type = TOK_OPENBRACKET;  break;
-  case ']': t->type = TOK_CLOSEBRACKET; break;
-  case '"': t->type = TOK_DOUBLEQUOTE;  break;
-  case '\'': t->type = TOK_SINGLEQUOTE; break;
+  case '=':  
+    t->type = TOK_EQUALS;       
+    strcpy(t->cvalue, "=");
+    break;
+  case '+':  
+    t->type = TOK_PLUS;         
+    strcpy(t->cvalue, "+");
+    break;
+  case '-':  
+    t->type = TOK_MINUS;        
+    break;
+  case '*':  
+    t->type = TOK_TIMES;        
+    break;
+  case '/':  
+    t->type = TOK_DIVIDE;       
+    break;
+  case '^':  
+    t->type = TOK_XOR;          
+    break;
+  case '|':  
+    t->type = TOK_OR;           
+    break;
+  case '&':  
+    t->type = TOK_AND;          
+    break;
+  case '%':  
+    t->type = TOK_MOD;          
+    break;
+  case '~':  
+    t->type = TOK_INVERT;       
+    break;
+  case '.':  
+    t->type = TOK_DOT;          
+    break;
+  case '(':  
+    t->type = TOK_OPENPAREN;    
+    break;
+  case ')':  
+    t->type = TOK_CLOSEPAREN;   
+    break;
+  case '"':  
+    t->type = TOK_DOUBLEQUOTE;  
+    break;
   }
 
   if (t->type != TOK_NONE) {
@@ -99,11 +122,11 @@ static struct Token *read_token(FILE *inFile)
       t->type = TOK_NAME;
       read_name(inFile, t->cvalue, TOKEN_SIZE_MAX);
     } else if (isdigit(c)) {
-      t->type = TOK_INT;
+      t->type = TOK_CONST;
       read_int(inFile, &t->ivalue);
     } else {
       printf("! Unknown token: %c\n", c);
-      return 0;
+      return NULL;
     }
   }
 
@@ -117,6 +140,9 @@ int tokenize(FILE *inFile, struct Token **outTokens)
   struct Token *t = *outTokens;
   while (t) {
     struct Token *newToken = read_token(inFile);
+    if (!newToken) {
+      break;
+    }
     if (newToken->type != TOK_WHITE) {
       t->next = newToken;
       t = t->next;
@@ -133,19 +159,22 @@ void tokens_dump(struct Token *tokens)
   while (tokens) {
     switch (tokens->type) {
       case TOK_NAME:
-        printf("%s ", tokens->cvalue);
+        printf("%s", tokens->cvalue);
         break;
       case TOK_EQUALS:
-        printf("= ");
+        printf("=");
         break;
       case TOK_PLUS:
-        printf("+ ");
+        printf("+");
         break;
-      case TOK_INT:
-        printf("%d ", tokens->ivalue);
+      case TOK_CONST:
+        printf("%d", tokens->ivalue);
         break;
-      case TOK_SEMICOLON:
-        printf(";\n");
+      case TOK_OPENPAREN:
+        printf("(");
+        break;
+      case TOK_CLOSEPAREN:
+        printf(")");
         break;
       case TOK_WHITE:
         break;
@@ -154,6 +183,7 @@ void tokens_dump(struct Token *tokens)
         break;
     }
     tokens = tokens->next;
+    printf(" ");
   }
   printf("\n");
 }

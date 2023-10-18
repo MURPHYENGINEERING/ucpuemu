@@ -1,7 +1,8 @@
-#include "uc.h"
+#include "ulisp.h"
 #include "tokenizer.h"
 #include "parser.h"
 #include <stdio.h>
+#include <string.h>
 
 
 static int translate_file(FILE *inFile, FILE *outFile)
@@ -15,14 +16,17 @@ static int translate_file(FILE *inFile, FILE *outFile)
 
   tokens_dump(tokens);
 
-  struct DAG *dag;
-  result = parse(tokens, &dag);
-  if (result != 0) {
-    printf("! Error parsing token stream: %d\n", result);
+  struct AST ast;
+  memset(&ast, 0, sizeof(ast));
+  ast.type = AST_LIST;
+  ast.child = ast_new();
+  tokens = parse(tokens, ast.child);
+  if (tokens != NULL) {
+    printf("! Token stream not completely parsed!\n");
     return result;
   }
 
-  dag_dump(dag);
+  ast_dump(&ast);
 
   return 0;
 }
@@ -34,16 +38,16 @@ int main(int argc, char *argv[])
   char *outFilename;
 
   if (argc < 2) {
-    //printf("Usage: uc <input> <output>\n");
+    //printf("Usage: ulisp <input> <output>\n");
     //return 1;
-    inFilename = "test.uc";
+    inFilename = "test.ulisp";
     outFilename = "test.asm";
   } else {
     inFilename = argv[1];
     outFilename = argv[2];
   }
 
-  printf("uC - by Matt Murphy\n");
+  printf("uLisp - by Matt Murphy\n");
   printf("  Input file:\t\t%s\n  Output file:\t\t%s\n", inFilename, outFilename);
 
   FILE *inFile = fopen(inFilename, "r");
