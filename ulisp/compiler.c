@@ -66,28 +66,30 @@ struct AST *compile_assignment(struct AST *ast, struct Program *prog, FILE *outF
         strncpy(instr->args[1], ast->token->cvalue, ARG_SIZE_MAX);
     }
 
-    char *regName = "<err>";
+    size_t regIndex = N_REGISTERS;
+    int didPush = 0;
+
     // Find an open register for assignment
     for (size_t i = 0; i < N_REGISTERS; ++i) {
-        if (prog->registers[i].occupied == 0) {
-            regName = prog->registers[i].name;
-            prog->registers[i].occupied = 1;
+        if (!prog->registers[i].occupied) {
+            regIndex = i;
             break;
         }
     }
-
-    char *pushedReg = NULL;
-
-    if (strnlen(regName, ARG_SIZE_MAX) == 0) {
-        pushedReg = prog->registers[i].name;
-        regName = pushedReg;
-        struct Instruction *stackInstr = instruction_add(prog->instructions, instruction_new());
+    
+    if (regIndex >= N_REGISTERS) {
+        didPush = 1;
+        regIndex = 0;
+        struct Instruction *stackInstr = instruction_add(&prog->instructions, instruction_new());
         strncpy(stackInstr->opcode, "push", OPCODE_SIZE_MAX);
-        strncpy(stackInstr->args[0], pushedReg, ARG_SIZE_MAX);
+        strncpy(stackInstr->args[0], prog->registers[regIndex].name, ARG_SIZE_MAX);
         instruction_emit(outFile, stackInstr);
+    } else {
+        prog->registers[regIndex].occupied = 1;
     }
-    strncpy(instr->args[0], regName, ARG_SIZE_MAX);
-    printf("Storing temporary value in register %s\n", regName);
+
+    strncpy(instr->args[0], prog->registers[regIndex].name, ARG_SIZE_MAX);
+    printf("Storing temporary value in register %s\n", prog->registers[regIndex].name);
 
     instruction_emit(outFile, instr);
     instr->next = instruction_add(&prog->instructions, instruction_new());
@@ -95,14 +97,16 @@ struct AST *compile_assignment(struct AST *ast, struct Program *prog, FILE *outF
     
     strncpy(instr->opcode, "store", OPCODE_SIZE_MAX);
     strncpy(instr->args[0], lhsVar->name, ARG_SIZE_MAX);
-    strncpy(instr->args[1], regName, ARG_SIZE_MAX);
+    strncpy(instr->args[1], prog->registers[regIndex].name, ARG_SIZE_MAX);
     instruction_emit(outFile, instr);
 
-    if (pushedReg) {
-        struct Instruction *stackInstr = instruction_add(prog->instructions, instruction_new());
+    if (didPush) {
+        struct Instruction *stackInstr = instruction_add(&prog->instructions, instruction_new());
         strncpy(stackInstr->opcode, "pop", OPCODE_SIZE_MAX);
-        strncpy(stackInstr->args[0], pushedReg, ARG_SIZE_MAX);
+        strncpy(stackInstr->args[0], prog->registers[regIndex].name, ARG_SIZE_MAX);
         instruction_emit(outFile, stackInstr);
+    } else {
+        prog->registers[regIndex].occupied = 0;
     }
 
     return ast;
