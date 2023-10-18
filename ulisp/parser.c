@@ -11,34 +11,43 @@ struct Token *parse(struct Token *t, struct AST *ast)
     };
 
     enum TokenType tokTypes[] = {
-        TOK_NONE, TOK_EQUALS, TOK_PLUS, TOK_MINUS, TOK_TIMES, TOK_DIVIDE, 
+        TOK_NONE, TOK_ASSIGN, TOK_PLUS, TOK_MINUS, TOK_TIMES, TOK_DIVIDE, 
         TOK_XOR, TOK_OR, TOK_AND, TOK_MOD, TOK_INVERT, TOK_NAME, TOK_CONST
     };
 
     while (t) {
         if (t->type == TOK_OPENPAREN) {
+            // Descend the tree at this node and recursively parse the remaining
+            // tokens until we find a close paren
             ast->type = AST_LIST;
             ast->child = ast_new();
             t = parse(t->next, ast->child);
         } else {
             if (t->type == TOK_CLOSEPAREN) {
+                // The current token does not represent a tree node.
+                // Kill the current node that was allocated for it
                 ast->prev->next = NULL;
                 free(ast);
                 return t->next;
             }
-            for (size_t i = 0; i < 13; ++i) {
+            // Map tokens to AST node types
+            for (size_t i = 0; i < sizeof(astTypes)/sizeof(astTypes[0]); ++i) {
                 if (t->type == tokTypes[i]) {
                     ast->type = astTypes[i];
                     break;
                 }
             }
             ast->token = t;
+            // Next token
             t = t->next;
         }
+        // Allocate a node for the next token
         ast->next = ast_new();
         ast->next->prev = ast;
         ast = ast->next;
     }
+    // We're out of tokens. Kill the current node that was allocated for the
+    // next one.
     ast->prev->next = NULL;
     free(ast);
     return t;

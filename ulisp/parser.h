@@ -1,5 +1,5 @@
-#ifndef UC_PARSER_H
-#define UC_PARSER_H
+#ifndef ULISP_PARSER_H
+#define ULISP_PARSER_H
 
 #include <stdlib.h>
 
@@ -15,6 +15,7 @@ enum ASTType
     AST_CONST,
     AST_FN,
     AST_ASSIGN,
+    AST_EQUALS,
     AST_PLUS,
     AST_MINUS,
     AST_TIMES,
