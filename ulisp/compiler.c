@@ -75,9 +75,16 @@ struct AST *compile_assignment(struct AST *ast, struct Program *prog, FILE *outF
             break;
         }
     }
+
+    char *pushedReg = NULL;
+
     if (strnlen(regName, ARG_SIZE_MAX) == 0) {
-        printf("! No register available for temporary value\n");
-        return NULL;
+        pushedReg = prog->registers[i].name;
+        regName = pushedReg;
+        struct Instruction *stackInstr = instruction_add(prog->instructions, instruction_new());
+        strncpy(stackInstr->opcode, "push", OPCODE_SIZE_MAX);
+        strncpy(stackInstr->args[0], pushedReg, ARG_SIZE_MAX);
+        instruction_emit(outFile, stackInstr);
     }
     strncpy(instr->args[0], regName, ARG_SIZE_MAX);
     printf("Storing temporary value in register %s\n", regName);
@@ -90,6 +97,13 @@ struct AST *compile_assignment(struct AST *ast, struct Program *prog, FILE *outF
     strncpy(instr->args[0], lhsVar->name, ARG_SIZE_MAX);
     strncpy(instr->args[1], regName, ARG_SIZE_MAX);
     instruction_emit(outFile, instr);
+
+    if (pushedReg) {
+        struct Instruction *stackInstr = instruction_add(prog->instructions, instruction_new());
+        strncpy(stackInstr->opcode, "pop", OPCODE_SIZE_MAX);
+        strncpy(stackInstr->args[0], pushedReg, ARG_SIZE_MAX);
+        instruction_emit(outFile, stackInstr);
+    }
 
     return ast;
 }
