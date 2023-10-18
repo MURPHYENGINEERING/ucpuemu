@@ -1,6 +1,7 @@
 #include "ulisp.h"
 #include "tokenizer.h"
 #include "parser.h"
+#include "compiler.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -27,6 +28,17 @@ static int translate_file(FILE *inFile, FILE *outFile)
     }
 
     ast_dump(&ast);
+    printf("\n");
+
+    struct Program prog;
+    memset(&prog, 0, sizeof(prog));
+    result = compile(&ast, &prog, outFile);
+    if (result != 0) {
+        printf("! Error compiling program: %d\n", result);
+        return result;
+    }
+
+    program_dump(&prog);
 
     return 0;
 }
