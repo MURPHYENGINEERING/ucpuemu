@@ -5,6 +5,16 @@
 
 struct Token *parse(struct Token *t, struct AST *ast)
 {
+    enum ASTType astTypes[] = {
+        AST_ERROR, AST_ASSIGN, AST_PLUS, AST_MINUS, AST_TIMES, AST_DIVIDE, 
+        AST_XOR, AST_OR, AST_AND, AST_MOD, AST_INVERT, AST_NAME, AST_CONST
+    };
+
+    enum TokenType tokTypes[] = {
+        TOK_NONE, TOK_EQUALS, TOK_PLUS, TOK_MINUS, TOK_TIMES, TOK_DIVIDE, 
+        TOK_XOR, TOK_OR, TOK_AND, TOK_MOD, TOK_INVERT, TOK_NAME, TOK_CONST
+    };
+
     while (t) {
         if (t->type == TOK_OPENPAREN) {
             ast->type = AST_LIST;
@@ -16,32 +26,12 @@ struct Token *parse(struct Token *t, struct AST *ast)
                 free(ast);
                 return t->next;
             }
-            ast->token = t;
-            switch (t->type) {
-            case TOK_EQUALS:
-                ast->type = AST_ASSIGN;
-                break;
-            case TOK_PLUS:
-                ast->type = AST_PLUS;
-                break;
-            case TOK_NAME:
-            case TOK_MINUS:
-            case TOK_TIMES:
-            case TOK_DIVIDE:
-            case TOK_INVERT:
-            case TOK_MOD:
-            case TOK_XOR:
-            case TOK_OR:
-            case TOK_AND:
-                ast->type = AST_NAME; 
-                break;
-            case TOK_CONST: 
-                ast->type = AST_CONST; 
-                break;
-            default: 
-                printf("! Unknown token type: %d", t->type); 
-                return NULL;
+            for (size_t i = 0; i < 13; ++i) {
+                if (t->type == tokTypes[i]) {
+                    ast->type = astTypes[i];
+                }
             }
+            ast->token = t;
             t = t->next;
         }
         ast->next = ast_new();

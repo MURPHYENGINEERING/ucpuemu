@@ -21,7 +21,9 @@ enum ASTType
     AST_DIVIDE,
     AST_XOR,
     AST_OR,
-    AST_AND
+    AST_AND,
+    AST_MOD,
+    AST_INVERT
 };
 
 
