@@ -1,13 +1,10 @@
   
 ldi a 1
-store foo a
-ldi b 2
-store bar b
-ld c bar
-store fizz c
+store bar a
+ldi b 1
+ldi c 2
+add b c
+ldi c 3
 ldi d 4
-store buzz d
-  
-push a 
-store foo a
-pop a 
+add c d
+store fizz b

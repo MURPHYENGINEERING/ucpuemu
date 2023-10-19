@@ -1,5 +1,2 @@
-(= foo 1)
-(= bar 2)
-(= fizz bar)
-(= buzz 4)
-(= foo (+ foo bar))
+(= bar 1)
+(= fizz (+ (+ 1 2) (+ 3 4)))

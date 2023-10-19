@@ -51,6 +51,49 @@ static struct Instruction *instr_pop(struct Instruction *list, const char *regNa
 }
 
 
+static struct Instruction *instr_store(struct Instruction *list, const char *varName, const char *regName)
+{
+    struct Instruction *instr = instruction_emplace(list);
+    strncpy(instr->opcode, "store", OPCODE_SIZE_MAX);
+    strncpy(instr->args[0], varName, ARG_SIZE_MAX);
+    strncpy(instr->args[1], regName, ARG_SIZE_MAX);
+    return instr;
+}
+
+
+static struct Instruction *instr_ldi(struct Instruction *list, const char *regName, uint32_t value)
+{
+    struct Instruction *instr = instruction_emplace(list);
+    strncpy(instr->opcode, "ldi", OPCODE_SIZE_MAX);
+    strncpy(instr->args[0], regName, ARG_SIZE_MAX);
+
+    char buf[ARG_SIZE_MAX+1];
+    snprintf(buf, ARG_SIZE_MAX, "%u", value);
+    strncpy(instr->args[1], buf, ARG_SIZE_MAX);
+    return instr;
+}
+
+
+static struct Instruction *instr_ld(struct Instruction *list, const char *regName, const char *varName)
+{
+    struct Instruction *instr = instruction_emplace(list);
+    strncpy(instr->opcode, "ld", OPCODE_SIZE_MAX);
+    strncpy(instr->args[0], regName, ARG_SIZE_MAX);
+    strncpy(instr->args[1], varName, ARG_SIZE_MAX);
+    return instr;
+}
+
+
+static struct Instruction *instr_add(struct Instruction *list, const char *lhsReg, const char *rhsReg)
+{
+    struct Instruction *instr = instruction_emplace(list);
+    strncpy(instr->opcode, "add", OPCODE_SIZE_MAX);
+    strncpy(instr->args[0], lhsReg, ARG_SIZE_MAX);
+    strncpy(instr->args[1], rhsReg, ARG_SIZE_MAX);
+    return instr;
+}
+
+
 static struct Variable *var_find(struct Variable *vars, const char *name)
 {
     while (vars) {
@@ -86,6 +129,103 @@ static struct Variable *var_add(struct Variable **vars, const char *name, size_t
 }
 
 
+static void compile_subexpression(struct AST *ast, struct Program *prog, const char *resultReg)
+{
+    ast = ast->child;
+    struct Instruction *instr;
+
+    if (ast->type == AST_ASSIGN) {
+        // Look at the LHS token
+        ast = ast->next;
+        
+        if (ast->type != AST_NAME) {
+            expected("name");
+            return;
+        }
+
+        struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
+        if (!lhsVar) {
+            lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
+            printf("Defined variable '%s' of size %d\n", lhsVar->name, lhsVar->size);
+        }
+
+        // Look at the RHS token
+        ast = ast->next;
+
+        if (ast->type == AST_CONST) {
+            instr = instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
+        } else if (ast->type == AST_NAME) {
+            instr = instr_ld(prog->instructions, resultReg, ast->token->cvalue);
+        } else if (ast->type == AST_LIST) {
+            compile_subexpression(ast, prog, resultReg);
+        }
+
+        instr = instr_store(instr, lhsVar->name, resultReg);
+
+    } else if (ast->type == AST_PLUS) {
+        // Look at the LHS token
+        ast = ast->next;
+
+        if (ast->type == AST_NAME) {
+            instr = instr_ld(prog->instructions, resultReg, ast->token->cvalue);
+
+        } else if (ast->type == AST_CONST) {
+            instr = instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
+        
+        } else if (ast->type == AST_LIST) {
+            compile_subexpression(ast, prog, resultReg);
+
+        } else {
+            printf("Invalid expression as LHS to +\n");
+            return;
+        }
+
+        // Find a register for the RHS
+        size_t rhsRegIndex = N_REGISTERS;
+        for (size_t i = 0; i  < N_REGISTERS; ++i) {
+            if (!prog->registers[i].occupied) {
+                rhsRegIndex = i;
+                break;
+            }
+        }
+
+        size_t pushedRhsReg = N_REGISTERS;
+        if (rhsRegIndex == N_REGISTERS) {
+            pushedRhsReg = 1;
+            rhsRegIndex = pushedRhsReg;
+            instr = instr_push(prog->instructions, prog->registers[pushedRhsReg].name);
+        } else {
+            prog->registers[rhsRegIndex].occupied = 1;
+        }
+
+        // Look at the RHS token
+        ast = ast->next;
+
+        if (ast->type == AST_NAME) {
+            instr = instr_ld(prog->instructions, prog->registers[rhsRegIndex].name, ast->token->cvalue);
+
+        } else if (ast->type == AST_CONST) {
+            instr = instr_ldi(prog->instructions, prog->registers[rhsRegIndex].name, ast->token->ivalue);
+            
+        } else if (ast->type == AST_LIST) {
+            compile_subexpression(ast, prog, prog->registers[rhsRegIndex].name);
+
+        } else {
+            printf("Invalid expression as RHS to +\n");
+            return;
+        }
+
+        instr = instr_add(instr, resultReg, prog->registers[rhsRegIndex].name);
+
+        if (pushedRhsReg < N_REGISTERS) {
+            instr = instr_pop(instr, prog->registers[pushedRhsReg].name); 
+        } else {
+            prog->registers[rhsRegIndex].occupied = 0;
+        }
+    }
+}
+
+
 static struct AST *compile_assignment(struct AST *ast, struct Program *prog)
 {
     // Only allow assignment to variables
@@ -95,31 +235,14 @@ static struct AST *compile_assignment(struct AST *ast, struct Program *prog)
         return NULL;
     }
 
-    // Prepare an instruction
-    struct Instruction *instr = instruction_emplace(prog->instructions);
-
-    // Find the assigned variable address
+    // Find the assigned variable
     struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
-    if (lhsVar) {
-        printf("Assigning to variable '%s' of size %lu\n", lhsVar->name, lhsVar->size);
-    } else {
+    if (!lhsVar) {
         lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
-        printf("Added variable '%s' of size %lu\n", lhsVar->name, lhsVar->size);
+        printf("Defined variable '%s' of size %d\n", lhsVar->name, lhsVar->size);
     }
 
-    // Write the opcode depending on the type of the assigned value
-    // Also write the second argument depending on the type
-    ast = ast->next;
-    if (ast->type == AST_CONST) {
-        strncpy(instr->opcode, "ldi", OPCODE_SIZE_MAX);
-        char buf[ARG_SIZE_MAX+1];
-        snprintf(buf, ARG_SIZE_MAX, "%u", ast->token->ivalue);
-        strncpy(instr->args[1], buf, ARG_SIZE_MAX);
-    } else if (ast->type == AST_NAME) {
-        strncpy(instr->opcode, "ld", OPCODE_SIZE_MAX);
-        strncpy(instr->args[1], ast->token->cvalue, ARG_SIZE_MAX);
-    }
-
+    // Find a register for the temporary value to be stored
     char *reg = NULL;
     int *occupied = NULL;
     int didPush = 0;
@@ -133,6 +256,8 @@ static struct AST *compile_assignment(struct AST *ast, struct Program *prog)
         }
     }
     
+    struct Instruction *instr;
+
     if (!reg) {
         didPush = 1;
         reg = prog->registers[0].name;
@@ -141,14 +266,18 @@ static struct AST *compile_assignment(struct AST *ast, struct Program *prog)
         *occupied = 1;
     }
 
-    printf("Storing temporary value in register %s\n", reg);
-    strncpy(instr->args[0], reg, ARG_SIZE_MAX);
+    // Look at the assigned value
+    ast = ast->next;
 
-    instr = instruction_emplace(instr);
-    
-    strncpy(instr->opcode, "store", OPCODE_SIZE_MAX);
-    strncpy(instr->args[0], lhsVar->name, ARG_SIZE_MAX);
-    strncpy(instr->args[1], reg, ARG_SIZE_MAX);
+    if (ast->type == AST_CONST) {
+        instr = instr_ldi(prog->instructions, reg, ast->token->ivalue);
+    } else if (ast->type == AST_NAME) {
+        instr = instr_ld(prog->instructions, reg, ast->token->cvalue);
+    } else if (ast->type == AST_LIST) {
+        compile_subexpression(ast, prog, reg);
+    }
+
+    instr = instr_store(instr, lhsVar->name, reg);
 
     if (didPush) {
         instr = instr_pop(instr, reg);
@@ -170,7 +299,6 @@ static struct AST *compile_plus(struct AST *ast, struct Program *prog)
 struct AST *compile(struct AST *ast, struct Program *prog, FILE *outFile)
 {
     while (ast) {
-        printf("AST: %d\n", ast->type);
         if (ast->type == AST_LIST) {
             compile(ast->child, prog, outFile);
             ast = ast->next;
