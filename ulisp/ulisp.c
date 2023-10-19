@@ -32,18 +32,24 @@ static int translate_file(FILE *inFile, FILE *outFile)
 
     struct Program prog;
     memset(&prog, 0, sizeof(prog));
+    prog.instructions = (struct Instruction*) malloc(sizeof(struct Instruction));
     prog.registers[0].name = "a";
     prog.registers[1].name = "b";
     prog.registers[2].name = "c";
     prog.registers[3].name = "d";
 
-    result = compile(&ast, &prog, outFile);
-    if (result != 0) {
-        printf("! Error compiling program: %d\n", result);
-        return result;
+    struct AST *remaining = compile(&ast, &prog, outFile);
+    if (remaining != NULL) {
+        printf("! AST remains uncompiled\n");
+        return 1;
     }
 
     program_dump(&prog);
+    struct Instruction *instr = prog.instructions;
+    while (instr) {
+        fprintf(outFile, "%s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
+        instr = instr->next;
+    }
 
     return 0;
 }

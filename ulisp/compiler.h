@@ -42,17 +42,8 @@ struct Program
     struct Register registers[N_REGISTERS];
 };
 
-int compile(struct AST *ast, struct Program *prog, FILE *outFile);
-struct AST *compile_assignment(struct AST *ast, struct Program *prog, FILE *outFile);
 
-struct Instruction *instruction_new();
-struct Instruction *instruction_add(struct Instruction **list, struct Instruction *instr);
-void instruction_emit(FILE *outFile, struct Instruction *instr);
-
-struct Variable *var_find(struct Variable *vars, const char *name);
-struct Variable *var_add(struct Variable **vars, const char *name, size_t size);
-
-void ast_expected(const char *s);
+struct AST *compile(struct AST *ast, struct Program *prog, FILE *outFile);
 
 void program_dump(struct Program *prog);
 

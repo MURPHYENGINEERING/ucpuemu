@@ -18,4 +18,5 @@ add_executable(ulisp
   stringutil.c
   tokenizer.c
   parser.c
+  compiler.c
 )
