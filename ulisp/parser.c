@@ -128,23 +128,23 @@ void tokens_free(struct Token *list)
 }
 
 
-void ast_dump(struct AST *ast)
+void ast_dump(struct AST *ast, size_t indent)
 {
     while (ast) {
         switch (ast->type) {
         case AST_LIST:
             printf("(");
-            ast_dump(ast->child);
-            printf(")");
+            ast_dump(ast->child, indent+1);
+            printf(") ");
             break;
         case AST_NAME: 
             printf("%s ", ast->token->cvalue); 
             break;
         case AST_CONST: 
-            printf("%d", ast->token->ivalue); 
+            printf("%d ", ast->token->ivalue); 
             break;
         case AST_FN: 
-            printf("fn "); 
+            printf("fn ");
             break;
         case AST_ASSIGN:
             printf("= ");

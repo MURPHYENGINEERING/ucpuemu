@@ -27,7 +27,7 @@ static int translate_file(FILE *inFile, FILE *outFile)
         return result;
     }
 
-    ast_dump(&ast);
+    ast_dump(&ast, 0);
     printf("\n");
 
     struct Program prog;

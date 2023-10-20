@@ -51,6 +51,6 @@ struct AST *ast_new();
 struct AST *ast_new_child(struct AST *parent);
 struct AST *ast_new_neighbor(struct AST *to);
 
-void ast_dump(struct AST *ast);
+void ast_dump(struct AST *ast, size_t indent);
 
 #endif

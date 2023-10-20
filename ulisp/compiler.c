@@ -129,169 +129,139 @@ static struct Variable *var_add(struct Variable **vars, const char *name, size_t
 }
 
 
-static void compile_subexpression(struct AST *ast, struct Program *prog, const char *resultReg)
+static const char *pick_register(struct Program *prog, size_t *regIndex, int *didPush)
 {
-    ast = ast->child;
-    struct Instruction *instr;
+    char *resultReg = NULL;
 
-    if (ast->type == AST_ASSIGN) {
-        // Look at the LHS token
-        ast = ast->next;
-        
-        if (ast->type != AST_NAME) {
-            expected("name");
-            return;
-        }
-
-        struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
-        if (!lhsVar) {
-            lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
-            printf("Defined variable '%s' of size %d\n", lhsVar->name, lhsVar->size);
-        }
-
-        // Look at the RHS token
-        ast = ast->next;
-
-        if (ast->type == AST_CONST) {
-            instr = instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
-        } else if (ast->type == AST_NAME) {
-            instr = instr_ld(prog->instructions, resultReg, ast->token->cvalue);
-        } else if (ast->type == AST_LIST) {
-            compile_subexpression(ast, prog, resultReg);
-        }
-
-        instr = instr_store(instr, lhsVar->name, resultReg);
-
-    } else if (ast->type == AST_PLUS) {
-        // Look at the LHS token
-        ast = ast->next;
-
-        if (ast->type == AST_NAME) {
-            instr = instr_ld(prog->instructions, resultReg, ast->token->cvalue);
-
-        } else if (ast->type == AST_CONST) {
-            instr = instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
-        
-        } else if (ast->type == AST_LIST) {
-            compile_subexpression(ast, prog, resultReg);
-
-        } else {
-            printf("Invalid expression as LHS to +\n");
-            return;
-        }
-
-        // Find a register for the RHS
-        size_t rhsRegIndex = N_REGISTERS;
-        for (size_t i = 0; i  < N_REGISTERS; ++i) {
-            if (!prog->registers[i].occupied) {
-                rhsRegIndex = i;
-                break;
-            }
-        }
-
-        size_t pushedRhsReg = N_REGISTERS;
-        if (rhsRegIndex == N_REGISTERS) {
-            pushedRhsReg = 1;
-            rhsRegIndex = pushedRhsReg;
-            instr = instr_push(prog->instructions, prog->registers[pushedRhsReg].name);
-        } else {
-            prog->registers[rhsRegIndex].occupied = 1;
-        }
-
-        // Look at the RHS token
-        ast = ast->next;
-
-        if (ast->type == AST_NAME) {
-            instr = instr_ld(prog->instructions, prog->registers[rhsRegIndex].name, ast->token->cvalue);
-
-        } else if (ast->type == AST_CONST) {
-            instr = instr_ldi(prog->instructions, prog->registers[rhsRegIndex].name, ast->token->ivalue);
-            
-        } else if (ast->type == AST_LIST) {
-            compile_subexpression(ast, prog, prog->registers[rhsRegIndex].name);
-
-        } else {
-            printf("Invalid expression as RHS to +\n");
-            return;
-        }
-
-        instr = instr_add(instr, resultReg, prog->registers[rhsRegIndex].name);
-
-        if (pushedRhsReg < N_REGISTERS) {
-            instr = instr_pop(instr, prog->registers[pushedRhsReg].name); 
-        } else {
-            prog->registers[rhsRegIndex].occupied = 0;
+    for (size_t i = 0; i < N_REGISTERS; ++i) {
+        if (!prog->registers[i].occupied) {
+            *regIndex = i;
+            resultReg = prog->registers[i].name;
+            prog->registers[i].occupied = 1;
+            break;
         }
     }
+    if (resultReg == NULL) {
+        *regIndex = 0;
+        *didPush = 1;
+        resultReg = prog->registers[*regIndex].name;
+        instr_push(prog->instructions, resultReg);
+    }
+
+    return resultReg;
 }
 
 
-static struct AST *compile_assignment(struct AST *ast, struct Program *prog)
+static struct AST *compile_node(struct AST *ast, struct Program *prog, const char *resultReg);
+
+static struct AST *compile_assign(struct AST *ast, struct Program *prog, const char *resultReg)
 {
-    // Only allow assignment to variables
-    ast = ast->next;
-    if (ast->type != AST_NAME) {
-        ast_expected("name");
-        return NULL;
+    size_t resultRegIndex = N_REGISTERS;
+    int didPushReg = 0;
+
+    if (resultReg == NULL) {
+        resultReg = pick_register(prog, &resultRegIndex, &didPushReg);
     }
 
-    // Find the assigned variable
+    // Evaluate the LHS node as a variable name
+    ast = ast->next;
+    if (ast->type != AST_NAME) {
+        printf("! Attempting to assign to a node that doesn't evaluate to a name\n");
+        return NULL;
+    }
     struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
     if (!lhsVar) {
         lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
         printf("Defined variable '%s' of size %d\n", lhsVar->name, lhsVar->size);
     }
 
-    // Find a register for the temporary value to be stored
-    char *reg = NULL;
-    int *occupied = NULL;
-    int didPush = 0;
-
-    // Find an open register for assignment
-    for (size_t i = 0; i < N_REGISTERS; ++i) {
-        if (!prog->registers[i].occupied) {
-            reg = prog->registers[i].name;
-            occupied = &prog->registers[i].occupied;
-            break;
-        }
-    }
-    
-    struct Instruction *instr;
-
-    if (!reg) {
-        didPush = 1;
-        reg = prog->registers[0].name;
-        instr = instr_push(instr, reg);
-    } else {
-        *occupied = 1;
-    }
-
-    // Look at the assigned value
+    // Evaluate the RHS node to a value
     ast = ast->next;
+    compile_node(ast, prog, resultReg);
 
-    if (ast->type == AST_CONST) {
-        instr = instr_ldi(prog->instructions, reg, ast->token->ivalue);
-    } else if (ast->type == AST_NAME) {
-        instr = instr_ld(prog->instructions, reg, ast->token->cvalue);
-    } else if (ast->type == AST_LIST) {
-        compile_subexpression(ast, prog, reg);
-    }
+    instr_store(prog->instructions, lhsVar->name, resultReg);
 
-    instr = instr_store(instr, lhsVar->name, reg);
-
-    if (didPush) {
-        instr = instr_pop(instr, reg);
+    if (didPushReg) {
+        instr_pop(prog->instructions, resultReg);
     } else {
-        //*occupied = 0;
+        prog->registers[resultRegIndex].occupied = 0;
     }
 
-    // Skip the assignand
-    return ast->next;
+    return ast;
 }
 
-static struct AST *compile_plus(struct AST *ast, struct Program *prog)
-{
 
+static struct AST *compile_plus(struct AST *ast, struct Program *prog, const char *resultReg)
+{
+    size_t resultRegIndex = N_REGISTERS;
+    int didPushReg = 0;
+
+    if (resultReg == NULL) {
+        resultReg = pick_register(prog, &resultRegIndex, &didPushReg);
+    }
+
+    // Evaluate LHS node to a value
+    ast = ast->next;
+    compile_node(ast, prog, resultReg);
+
+    size_t rhsResultRegIndex = N_REGISTERS;
+    int didPushRhsReg = 0;
+    const char *rhsResultReg = pick_register(prog, &rhsResultRegIndex, &didPushRhsReg);
+
+    ast = ast->next;
+    compile_node(ast, prog, rhsResultReg);
+
+    instr_add(prog->instructions, resultReg, rhsResultReg);
+    
+    if (didPushRhsReg) {
+        instr_pop(prog->instructions, rhsResultReg);
+    } else {
+        prog->registers[rhsResultRegIndex].occupied = 0;
+    }
+
+    if (didPushReg) {
+        instr_pop(prog->instructions, resultReg);
+    } else {
+        prog->registers[resultRegIndex].occupied = 0;
+    }
+
+    return ast;
+}
+
+
+static struct AST *compile_node(struct AST *ast, struct Program *prog, const char *resultReg)
+{
+    size_t resultRegIndex = N_REGISTERS;
+    int didPushReg = 0;
+
+    if (resultReg == NULL) {
+        resultReg = pick_register(prog, &resultRegIndex, &didPushReg);
+    }
+
+    if (ast->type == AST_LIST) {
+        while (ast) {
+            compile_node(ast->child, prog, resultReg);
+            ast = ast->next;
+        }
+    } else if (ast->type == AST_ASSIGN) {
+        ast = compile_assign(ast, prog, resultReg);
+
+    } else if (ast->type == AST_PLUS) {
+        ast = compile_plus(ast, prog, resultReg);
+
+    } else if (ast->type == AST_NAME) {
+        instr_ld(prog->instructions, resultReg, ast->token->cvalue);
+
+    } else if (ast->type == AST_CONST) {
+        instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
+    }
+
+    if (didPushReg) {
+        instr_pop(prog->instructions, resultReg);
+    } else {
+        prog->registers[resultRegIndex].occupied = 0;
+    }
+    
     return ast;
 }
 
@@ -299,19 +269,8 @@ static struct AST *compile_plus(struct AST *ast, struct Program *prog)
 struct AST *compile(struct AST *ast, struct Program *prog, FILE *outFile)
 {
     while (ast) {
-        if (ast->type == AST_LIST) {
-            compile(ast->child, prog, outFile);
-            ast = ast->next;
-        } else if (ast->type == AST_ASSIGN) {
-            ast = compile_assignment(ast, prog);
-        } else if (ast->type == AST_PLUS) {
-            ast = compile_plus(ast, prog);
-        } else {
-            printf("! Uncompiled AST node: %d\n", ast->type);
-            ast = ast->next;
-        }
+        ast = compile_node(ast, prog, NULL);
     }
-
     return ast;
 }
 
@@ -325,6 +284,12 @@ void program_dump(struct Program *prog)
     while (var) {
         printf("  %s: %lu words\n", var->name, var->size);
         var = var->next;
+    }
+    printf("\n");
+    struct Instruction *instr = prog->instructions;
+    while (instr) {
+        printf("%s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
+        instr = instr->next;
     }
     printf("\n");
 }
