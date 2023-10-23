@@ -208,6 +208,7 @@ static struct AST *compile_plus(struct AST *ast, struct Program *prog, const cha
     int didPushRhsReg = 0;
     const char *rhsResultReg = pick_register(prog, &rhsResultRegIndex, &didPushRhsReg);
 
+    // Evaluate RHS node to a value
     ast = ast->next;
     compile_node(ast, prog, rhsResultReg);
 
@@ -225,12 +226,16 @@ static struct AST *compile_plus(struct AST *ast, struct Program *prog, const cha
         prog->registers[resultRegIndex].occupied = 0;
     }
 
-    return ast;
+    return ast->next;
 }
 
 
 static struct AST *compile_node(struct AST *ast, struct Program *prog, const char *resultReg)
 {
+    if (!ast) {
+        return NULL;
+    }
+
     size_t resultRegIndex = N_REGISTERS;
     int didPushReg = 0;
 
@@ -239,10 +244,8 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
     }
 
     if (ast->type == AST_LIST) {
-        while (ast) {
-            compile_node(ast->child, prog, resultReg);
-            ast = ast->next;
-        }
+        compile_node(ast->child, prog, resultReg);
+
     } else if (ast->type == AST_ASSIGN) {
         ast = compile_assign(ast, prog, resultReg);
 
@@ -251,9 +254,11 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
 
     } else if (ast->type == AST_NAME) {
         instr_ld(prog->instructions, resultReg, ast->token->cvalue);
+        return NULL;
 
     } else if (ast->type == AST_CONST) {
         instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
+        return NULL;
     }
 
     if (didPushReg) {
@@ -262,15 +267,14 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
         prog->registers[resultRegIndex].occupied = 0;
     }
     
-    return ast;
+    return compile_node(ast ? ast->next : NULL, prog, resultReg);
 }
 
 
 struct AST *compile(struct AST *ast, struct Program *prog, FILE *outFile)
 {
-    while (ast) {
-        ast = compile_node(ast, prog, NULL);
-    }
+    // The first node is a list that contains the whole program
+    ast = compile_node(ast, prog, NULL);
     return ast;
 }
 
