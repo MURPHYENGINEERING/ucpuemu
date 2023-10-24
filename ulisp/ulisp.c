@@ -51,7 +51,9 @@ static int translate_file(FILE *inFile, FILE *outFile)
         fprintf(outFile, "  %s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
         instr = instr->next;
     }
+
     fprintf(outFile, "\n");
+    
     struct Variable *var = prog.vars;
     while (var) {
         fprintf(outFile, "%s:\n", var->name);
