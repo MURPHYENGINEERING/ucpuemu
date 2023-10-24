@@ -17,7 +17,7 @@
 // Specifies the default output file format
 // .dat : loader.dat format
 // .mif : Memory Initialization File format
-#define DEFAULT_OUTPUT_EXTENSION ".mif"
+#define DEFAULT_OUTPUT_EXTENSION ".rom"
 // TODO: get these from command line arguments
 // and actually use them to format opcodes
 #define WORD_WIDTH 32
@@ -228,15 +228,23 @@ find_label(char* line, bool notify)
     if (strnlen(line, LINE_MAX_LEN) == 0)
       expected("label declaration");
 
-    strncpy(labels[nLabels].name, line, LABEL_MAX_LEN);
-    labels[nLabels].addr = curAddr;
-    if (notify)
-      printf(
-          "  %-10s = %08x on line %lu\n",
-          labels[nLabels].name,
-          curAddr,
-          iInputLine);
-    ++nLabels;
+    size_t existingIndex = nLabels;
+    for (size_t i = 0; i < nLabels; ++i) {
+      if (strcmp(line, labels[i].name) == 0) {
+        existingIndex = i;
+      }
+    }
+    if (existingIndex == nLabels) {
+      strncpy(labels[nLabels].name, line, LABEL_MAX_LEN);
+      labels[nLabels].addr = curAddr;
+      if (notify)
+        printf(
+            "  %-10s = %08x on line %lu\n",
+            labels[nLabels].name,
+            curAddr,
+            iInputLine);
+      ++nLabels;
+    }
     return true;
   }
   return false;
@@ -710,6 +718,18 @@ main(int argc, char* argv[])
   }
 
   fclose(inFile);
+  fclose(outFile);
+
+  char buf[FILENAME_MAX];
+  strncpy(buf, outFilename, sizeof(buf) - 1);
+  strip_filename_ext(buf);
+  strncat(buf, ".vars", sizeof(buf) - 1);
+  outFilename = buf;
+
+  outFile = fopen(outFilename, "w");
+  for (size_t i = 0; i < nLabels; ++i) {
+    fprintf(outFile, "%s %lu\n", labels[i].name, labels[i].addr);
+  }
   fclose(outFile);
 
   printf("\n");
