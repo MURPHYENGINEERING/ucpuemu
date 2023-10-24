@@ -60,12 +60,12 @@ int load_rom(uint32_t* mem, char* path);
  */
 
 // Print out the contents of the CPU
-void dump_cpu(struct UCPU* cpu);
+void dump_cpu(struct UCPU* cpu, uint32_t *mem);
 // Reset the CPU to its initial state (zero all)
 void reset(struct UCPU* cpu);
 // Execute one clock cycle, iterating the microcode machine
 struct CPU_Window;
-void clock_cpu(struct UCPU* cpu, uint32_t* mem, struct CPU_Window* wnd);
+void clock_cpu(struct UCPU* cpu, uint32_t* mem/*, struct CPU_Window* wnd*/);
 
 /*******************************************************************************
  * Microcode

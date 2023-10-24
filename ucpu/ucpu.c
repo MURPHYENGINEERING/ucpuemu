@@ -1,11 +1,42 @@
 #include "ucpu.h"
-#include "gfx.h"
+//#include "gfx.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 
 uint32_t mem[MEM_SIZE];
+
+struct Variable
+{
+  char name[32];
+  size_t addr;
+};
+
+struct Variable vars[1024];
+size_t nVars = 0;
+
+void load_vars(struct Variable *vars, const char *path)
+{
+  FILE *inFile = fopen(path, "r");
+  char line[256];
+  size_t len = 0;
+  size_t read;
+
+  while (fgets(line, sizeof(line), inFile)) {
+    for (size_t i = 0; i < strlen(line); ++i) {
+      if (line[i] != ' ') {
+        vars[nVars].name[i] = line[i];
+      } else {
+        vars[nVars].addr = atoi(&line[i]);
+        break;
+      }
+    }
+    ++nVars;
+  }
+
+  fclose(inFile);
+}
 
 
 int main(int argc, char* argv[])
@@ -14,12 +45,23 @@ int main(int argc, char* argv[])
 
   struct UCPU cpu;
 
-  if (!load_rom(mem, "prog.rom")) {
-    return -1;
+  if (argc == 1) {
+    if (!load_rom(mem, "prog.rom")) {
+      return -1;
+    }
+  } else {
+    if (!load_rom(mem, argv[1])) {
+      return -1;
+    }
+  }
+
+  if (argc >= 3) {
+    load_vars(vars, argv[2]);
   }
 
   reset(&cpu);
 
+/*
   struct CPU_Window wnd;
   wnd.title = "uCPUEMU - Matt Murphy";
   wnd.width = 640;
@@ -27,10 +69,13 @@ int main(int argc, char* argv[])
   if (!window_create(&wnd)) {
     return -1;
   }
+  */
 
   while (!(cpu.sig & SIG_halt)) {
-    clock_cpu(&cpu, mem, &wnd);
+    clock_cpu(&cpu, mem/*, &wnd*/);
   }
+
+  dump_cpu(&cpu, mem);
 
   return 0;
 }
@@ -44,7 +89,7 @@ void reset(struct UCPU* cpu)
 
 size_t draw_skip = 0;
 
-void clock_cpu(struct UCPU* cpu, uint32_t* mem, struct CPU_Window* wnd)
+void clock_cpu(struct UCPU* cpu, uint32_t* mem/*, struct CPU_Window* wnd*/)
 {
   // Look up the signal encoded by the current microcode instruction
   cpu->sig = urom[cpu->uip];
@@ -52,14 +97,14 @@ void clock_cpu(struct UCPU* cpu, uint32_t* mem, struct CPU_Window* wnd)
   // OUT to the bus
   if (cpu->sig & SIG_fetch) { 
     cpu->uip = 0; 
-    if (draw_skip++ > 100000) {
+    /*if (draw_skip++ > 100000) {
       if (!window_process_events(wnd, mem)) {
         cpu->sig = SIG_halt;
         return;
       }
       window_draw(wnd, mem); 
       draw_skip = 0;
-    }
+    }*/
     return; 
   }
   if (cpu->sig & SIG_halt)  { return; }
@@ -145,7 +190,7 @@ int load_rom(uint32_t* mem, char* path)
 }
 
 
-void dump_cpu(struct UCPU* cpu)
+void dump_cpu(struct UCPU* cpu, uint32_t *mem)
 {
   printf("---------------------------------------\n");
   printf("  PC: %04x\t IR: %04x\tUIP: %lu\n", cpu->pc, cpu->ir, cpu->uip);
@@ -155,5 +200,9 @@ void dump_cpu(struct UCPU* cpu)
   printf("   R: %04x\tREG: %04x\n", cpu->r, cpu->reg);
   printf("  R0: %04x\t R1: %04x\n  R2: %04x\t R3: %04x\n", 
     cpu->regs[0], cpu->regs[1], cpu->regs[2], cpu->regs[3]);
+  printf("---------------------------------------\n");
+  for (size_t i = 0; i < nVars; ++i) {
+    printf("%s:\t%u\n", vars[i].name, mem[vars[i].addr]);
+  }
   printf("---------------------------------------\n\n");
 }
