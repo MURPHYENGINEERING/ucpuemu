@@ -39,7 +39,7 @@ static int translate_file(FILE *inFile, FILE *outFile)
     prog.registers[2].name = "c";
     prog.registers[3].name = "d";
 
-    struct AST *remaining = compile(&ast, &prog, outFile);
+    struct AST *remaining = compile(&ast, &prog);
     if (remaining != NULL) {
         printf("! AST remains uncompiled\n");
         return 1;

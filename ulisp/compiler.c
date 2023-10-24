@@ -226,7 +226,7 @@ static struct AST *compile_plus(struct AST *ast, struct Program *prog, const cha
         prog->registers[resultRegIndex].occupied = 0;
     }
 
-    return ast->next;
+    return ast;
 }
 
 
@@ -244,7 +244,10 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
     }
 
     if (ast->type == AST_LIST) {
-        compile_node(ast->child, prog, resultReg);
+        struct AST *list = ast->child;
+        while (list) {
+            list = compile_node(list, prog, resultReg);
+        }
 
     } else if (ast->type == AST_ASSIGN) {
         ast = compile_assign(ast, prog, resultReg);
@@ -254,11 +257,9 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
 
     } else if (ast->type == AST_NAME) {
         instr_ld(prog->instructions, resultReg, ast->token->cvalue);
-        return NULL;
 
     } else if (ast->type == AST_CONST) {
         instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
-        return NULL;
     }
 
     if (didPushReg) {
@@ -267,13 +268,12 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
         prog->registers[resultRegIndex].occupied = 0;
     }
     
-    return compile_node(ast ? ast->next : NULL, prog, resultReg);
+    return ast->next;
 }
 
 
-struct AST *compile(struct AST *ast, struct Program *prog, FILE *outFile)
+struct AST *compile(struct AST *ast, struct Program *prog)
 {
-    // The first node is a list that contains the whole program
     ast = compile_node(ast, prog, NULL);
     return ast;
 }

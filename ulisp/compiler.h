@@ -43,7 +43,7 @@ struct Program
 };
 
 
-struct AST *compile(struct AST *ast, struct Program *prog, FILE *outFile);
+struct AST *compile(struct AST *ast, struct Program *prog);
 
 void program_dump(struct Program *prog);
 
