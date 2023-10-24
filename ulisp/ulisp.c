@@ -48,8 +48,17 @@ static int translate_file(FILE *inFile, FILE *outFile)
     program_dump(&prog);
     struct Instruction *instr = prog.instructions;
     while (instr) {
-        fprintf(outFile, "%s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
+        fprintf(outFile, "  %s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
         instr = instr->next;
+    }
+    fprintf(outFile, "\n");
+    struct Variable *var = prog.vars;
+    while (var) {
+        fprintf(outFile, "%s:\n", var->name);
+        for (size_t i = 0; i < var->size; ++i) {
+            fprintf(outFile, "  word 0\n");
+        }
+        var = var->next;
     }
 
     return 0;
@@ -87,6 +96,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    fprintf(outFile, "  ; %s\n", inFilename);
     int result = translate_file(inFile, outFile);
 
     fclose(inFile);

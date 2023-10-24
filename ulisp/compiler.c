@@ -106,6 +106,18 @@ static struct Instruction *instr_sub(struct Instruction *list, const char *lhsRe
 }
 
 
+static struct Instruction *instr_mul(struct Instruction *list, const char *lhsReg, const char *rhsReg)
+{
+    return instr_binary(list, "mul", lhsReg, rhsReg);
+}
+
+
+static struct Instruction *instr_div(struct Instruction *list, const char *lhsReg, const char *rhsReg)
+{
+    return instr_binary(list, "div", lhsReg, rhsReg);
+}
+
+
 static struct Variable *var_find(struct Variable *vars, const char *name)
 {
     while (vars) {
@@ -247,7 +259,13 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Re
 
     } else if (ast->type == AST_MINUS) {
         ast = compile_binary_operator(ast, prog, resultReg, &instr_sub);
+    
+    } else if (ast->type == AST_TIMES) {
+        ast = compile_binary_operator(ast, prog, resultReg, &instr_mul);
 
+    } else if (ast->type == AST_DIVIDE) {
+        ast = compile_binary_operator(ast, prog, resultReg, &instr_div);
+    
     } else if (ast->type == AST_NAME) {
         instr_ld(prog->instructions, resultReg->name, ast->token->cvalue);
 
