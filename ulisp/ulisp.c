@@ -60,6 +60,7 @@ static int translate_file(FILE *inFile, FILE *outFile)
         for (size_t i = 0; i < var->size; ++i) {
             fprintf(outFile, "  word 0x0000\n");
         }
+        
         var = var->next;
     }
 
