@@ -58,7 +58,7 @@ static int translate_file(FILE *inFile, FILE *outFile)
     while (var) {
         fprintf(outFile, "%s:\n", var->name);
         for (size_t i = 0; i < var->size; ++i) {
-            fprintf(outFile, "  word 0\n");
+            fprintf(outFile, "  word 0x0000\n");
         }
         var = var->next;
     }

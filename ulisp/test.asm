@@ -11,6 +11,6 @@
   store eight a
 
 eight:
-  word 0
+  word 0x0000
 two:
-  word 0
+  word 0x0000
