@@ -84,13 +84,25 @@ static struct Instruction *instr_ld(struct Instruction *list, const char *regNam
 }
 
 
-static struct Instruction *instr_add(struct Instruction *list, const char *lhsReg, const char *rhsReg)
+static struct Instruction *instr_binary(struct Instruction *list, const char *operator, const char *lhsReg, const char *rhsReg)
 {
     struct Instruction *instr = instruction_emplace(list);
-    strncpy(instr->opcode, "add", OPCODE_SIZE_MAX);
+    strncpy(instr->opcode, operator, OPCODE_SIZE_MAX);
     strncpy(instr->args[0], lhsReg, ARG_SIZE_MAX);
     strncpy(instr->args[1], rhsReg, ARG_SIZE_MAX);
     return instr;
+}
+
+
+static struct Instruction *instr_add(struct Instruction *list, const char *lhsReg, const char *rhsReg)
+{
+    return instr_binary(list, "add", lhsReg, rhsReg);
+}
+
+
+static struct Instruction *instr_sub(struct Instruction *list, const char *lhsReg, const char *rhsReg)
+{
+    return instr_binary(list, "sub", lhsReg, rhsReg);
 }
 
 
@@ -129,40 +141,44 @@ static struct Variable *var_add(struct Variable **vars, const char *name, size_t
 }
 
 
-static const char *pick_register(struct Program *prog, size_t *regIndex, int *didPush)
+static struct Register *register_claim(struct Program *prog)
 {
-    char *resultReg = NULL;
+    struct Register *reg = NULL;
 
     for (size_t i = 0; i < N_REGISTERS; ++i) {
-        if (!prog->registers[i].occupied) {
-            *regIndex = i;
-            resultReg = prog->registers[i].name;
-            prog->registers[i].occupied = 1;
+        if (!prog->registers[i].claimed) {
+            reg = &prog->registers[i];
+            reg->claimed = 1;
             break;
         }
     }
-    if (resultReg == NULL) {
-        *regIndex = 0;
-        *didPush = 1;
-        resultReg = prog->registers[*regIndex].name;
-        instr_push(prog->instructions, resultReg);
+    if (reg == NULL) {
+        reg = &prog->registers[0];
+        ++reg->nPushes;
+        instr_push(prog->instructions, reg->name);
     }
-
-    return resultReg;
+    
+    reg->prog = prog;
+    return reg;
 }
 
 
-static struct AST *compile_node(struct AST *ast, struct Program *prog, const char *resultReg);
-
-static struct AST *compile_assign(struct AST *ast, struct Program *prog, const char *resultReg)
+static void register_release(struct Register *reg)
 {
-    size_t resultRegIndex = N_REGISTERS;
-    int didPushReg = 0;
-
-    if (resultReg == NULL) {
-        resultReg = pick_register(prog, &resultRegIndex, &didPushReg);
+    if (reg->nPushes > 0) {
+        instr_pop(reg->prog->instructions, reg->name);
+        --reg->nPushes;
+    } else {
+        reg->claimed = 0;
     }
+}
 
+
+static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Register *resultReg);
+
+
+static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct Register *resultReg)
+{
     // Evaluate the LHS node as a variable name
     ast = ast->next;
     if (ast->type != AST_NAME) {
@@ -179,68 +195,42 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, const c
     ast = ast->next;
     compile_node(ast, prog, resultReg);
 
-    instr_store(prog->instructions, lhsVar->name, resultReg);
-
-    if (didPushReg) {
-        instr_pop(prog->instructions, resultReg);
-    } else {
-        prog->registers[resultRegIndex].occupied = 0;
-    }
+    instr_store(prog->instructions, lhsVar->name, resultReg->name);
 
     return ast;
 }
 
 
-static struct AST *compile_plus(struct AST *ast, struct Program *prog, const char *resultReg)
+static struct AST *compile_binary_operator(struct AST *ast, struct Program *prog, struct Register *resultReg, struct Instruction *(*operator)(struct Instruction*, const char*, const char*))
 {
-    size_t resultRegIndex = N_REGISTERS;
-    int didPushReg = 0;
-
-    if (resultReg == NULL) {
-        resultReg = pick_register(prog, &resultRegIndex, &didPushReg);
-    }
-
     // Evaluate LHS node to a value
     ast = ast->next;
     compile_node(ast, prog, resultReg);
 
-    size_t rhsResultRegIndex = N_REGISTERS;
-    int didPushRhsReg = 0;
-    const char *rhsResultReg = pick_register(prog, &rhsResultRegIndex, &didPushRhsReg);
+    struct Register *rhsResultReg = register_claim(prog);
 
     // Evaluate RHS node to a value
     ast = ast->next;
     compile_node(ast, prog, rhsResultReg);
 
-    instr_add(prog->instructions, resultReg, rhsResultReg);
+    operator(prog->instructions, resultReg->name, rhsResultReg->name);
     
-    if (didPushRhsReg) {
-        instr_pop(prog->instructions, rhsResultReg);
-    } else {
-        prog->registers[rhsResultRegIndex].occupied = 0;
-    }
-
-    if (didPushReg) {
-        instr_pop(prog->instructions, resultReg);
-    } else {
-        prog->registers[resultRegIndex].occupied = 0;
-    }
+    register_release(rhsResultReg);
 
     return ast;
 }
 
 
-static struct AST *compile_node(struct AST *ast, struct Program *prog, const char *resultReg)
+static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Register *resultReg)
 {
     if (!ast) {
         return NULL;
     }
 
-    size_t resultRegIndex = N_REGISTERS;
-    int didPushReg = 0;
-
+    int didClaimReg = 0;
     if (resultReg == NULL) {
-        resultReg = pick_register(prog, &resultRegIndex, &didPushReg);
+        resultReg = register_claim(prog);
+        didClaimReg = 1;
     }
 
     if (ast->type == AST_LIST) {
@@ -253,19 +243,20 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, const cha
         ast = compile_assign(ast, prog, resultReg);
 
     } else if (ast->type == AST_PLUS) {
-        ast = compile_plus(ast, prog, resultReg);
+        ast = compile_binary_operator(ast, prog, resultReg, &instr_add);
+
+    } else if (ast->type == AST_MINUS) {
+        ast = compile_binary_operator(ast, prog, resultReg, &instr_sub);
 
     } else if (ast->type == AST_NAME) {
-        instr_ld(prog->instructions, resultReg, ast->token->cvalue);
+        instr_ld(prog->instructions, resultReg->name, ast->token->cvalue);
 
     } else if (ast->type == AST_CONST) {
-        instr_ldi(prog->instructions, resultReg, ast->token->ivalue);
+        instr_ldi(prog->instructions, resultReg->name, ast->token->ivalue);
     }
 
-    if (didPushReg) {
-        instr_pop(prog->instructions, resultReg);
-    } else {
-        prog->registers[resultRegIndex].occupied = 0;
+    if (didClaimReg) {
+        register_release(resultReg);
     }
     
     return ast->next;

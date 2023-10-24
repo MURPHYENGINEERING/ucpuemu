@@ -44,7 +44,7 @@ static size_t read_int(FILE *inFile, uint32_t *outVal)
 static void skip_white(FILE *inFile)
 {
     int c = fgetc(inFile);
-    while (c != EOF && (c == ' ' || c == '\n')) {
+    while (c != EOF && (c == ' ' || c == '\n' || c == '\t')) {
         c = fgetc(inFile);
     }
     // Don't absorb the first non-white char

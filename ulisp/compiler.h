@@ -28,10 +28,14 @@ struct Variable
 };
 
 
+struct Program;
+
 struct Register
 {
+    struct Program* prog;
     char *name;
-    int occupied;
+    int claimed;
+    size_t nPushes;
 };
 
 
