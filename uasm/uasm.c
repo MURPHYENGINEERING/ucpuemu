@@ -728,7 +728,7 @@ main(int argc, char* argv[])
 
   outFile = fopen(outFilename, "w");
   for (size_t i = 0; i < nLabels; ++i) {
-    fprintf(outFile, "%s %lu\n", labels[i].name, labels[i].addr);
+    fprintf(outFile, "%s %u\n", labels[i].name, labels[i].addr);
   }
   fclose(outFile);
 
