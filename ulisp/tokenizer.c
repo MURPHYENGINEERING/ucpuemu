@@ -9,12 +9,12 @@ static size_t read_name(FILE *inFile, char* outName, size_t maxLen)
 {
     size_t i = 0;
     int c = fgetc(inFile);
-    while (c != EOF && isalpha(c) && i < maxLen) {
+    while (c != EOF && (isalpha(c) || isdigit(c)) && i < maxLen) {
         outName[i++] = c;
         c = fgetc(inFile);
     }
     // Don't absorb the first non-alpha char
-    if (!isalpha(c)) {
+    if (!isalpha(c) && !isdigit(c)) {
         ungetc(c, inFile); 
     }
 

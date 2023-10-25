@@ -32,8 +32,13 @@ static int translate_file(FILE *inFile, FILE *outFile)
 
     struct Program prog;
     memset(&prog, 0, sizeof(prog));
+
     prog.instructions = (struct Instruction*) malloc(sizeof(struct Instruction));
     memset(prog.instructions, 0, sizeof(*prog.instructions));
+
+    prog.functions = (struct Function*) malloc(sizeof(struct Function));
+    memset(prog.functions, 0, sizeof(*prog.functions));
+
     prog.registers[0].name = "a";
     prog.registers[1].name = "b";
     prog.registers[2].name = "c";
@@ -46,10 +51,24 @@ static int translate_file(FILE *inFile, FILE *outFile)
     }
 
     program_dump(&prog);
+
     struct Instruction *instr = prog.instructions;
     while (instr) {
         fprintf(outFile, "  %s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
         instr = instr->next;
+    }
+
+    struct Function *fn = prog.functions;
+    while (fn) {
+        if (fn->name) {
+            fprintf(outFile, "%s:\n", fn->name);
+            instr = fn->instructions->next;
+            while (instr) {
+                fprintf(outFile, "  %s %s %s\n", instr->opcode, instr->args[0], instr->args[1]);
+                instr = instr->next;
+            }
+        }
+        fn = fn->next;
     }
 
     fprintf(outFile, "\n");

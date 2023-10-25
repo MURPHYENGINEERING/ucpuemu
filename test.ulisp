@@ -1,1 +1,2 @@
+(fn myfun arg1 (+ arg1 2))
 (= eight (+ (* (= two (+ 1 1)) 3) (/ 6 (= three 3))))

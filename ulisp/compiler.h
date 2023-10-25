@@ -8,6 +8,8 @@
 #define ARG_SIZE_MAX 32
 #define N_ARGS_MAX 2
 #define N_REGISTERS 4
+#define N_FN_ARGS_MAX 32
+#define FN_ARG_SIZE_MAX 32
 
 struct AST;
 
@@ -39,10 +41,21 @@ struct Register
 };
 
 
+struct Function
+{
+    char *name;
+    char *args[N_FN_ARGS_MAX];
+    size_t nArgs;
+    struct Instruction *instructions;
+    struct Function *next;
+};
+
+
 struct Program 
 {
     struct Variable *vars;
     struct Instruction *instructions;
+    struct Function *functions;
     struct Register registers[N_REGISTERS];
 };
 
