@@ -219,11 +219,9 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
         return NULL;
     }
 
-    char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-    sprintf(buf, "%s%s", ctx->namePfx, ast->token->cvalue);
-    struct Variable *lhsVar = var_find(prog->vars, buf);
+    struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
     if (!lhsVar) {
-        lhsVar = var_add(&prog->vars, buf, 1);
+        lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
         printf("Defined variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
     }
 
@@ -231,7 +229,9 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
     ast = ast->next;
     compile_node(ast, prog, ctx);
 
-    instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
+    char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+    snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "%s%s", lhsVar->pfx, lhsVar->name);
+    instr_store(ctx->instr, buf, ctx->reg->name);
 
     return ast;
 }
@@ -280,15 +280,13 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Cont
     struct Context fnCtx;
     memcpy(&fnCtx, ctx, sizeof(fnCtx));
     fnCtx.instr = fn->instructions;
-    sprintf(fnCtx.namePfx, "__%s_", fn->name);
 
     while (ast->type == AST_NAME) { 
         fn->args[fn->nArgs++] = ast->token->cvalue;
-        char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-        sprintf(buf, "%s%s", fnCtx.namePfx, ast->token->cvalue);
-        struct Variable *var = var_find(prog->vars, buf);
+        struct Variable *var = var_find(prog->vars, ast->token->cvalue);
         if (!var) {
-            var = var_add(&prog->vars, buf, 1);
+            var = var_add(&prog->vars, ast->token->cvalue, 1);
+            snprintf(var->pfx, FN_NAME_SIZE_MAX, "__%s_", fn->name);
         }
         ast = ast->next;
     }
@@ -344,9 +342,15 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
         if (strcmp(ast->token->cvalue, "fn") == 0) {
             ast = compile_fn(ast, prog, ctx);
         } else {
-            char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-            sprintf(buf, "%s%s", ctx->namePfx, ast->token->cvalue);
-            instr_ld(ctx->instr, ctx->reg->name, buf);
+            struct Variable *var = var_find(prog->vars, ast->token->cvalue);
+            if  (var) {
+                char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+                snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "%s%s", 
+                        var->pfx, var->name);
+                instr_ld(ctx->instr, ctx->reg->name, buf);
+            } else {
+                instr_ld(ctx->instr, ctx->reg->name, ast->token->cvalue);
+            }
         }
 
     } else if (ast->type == AST_CONST) {

@@ -26,6 +26,7 @@ struct Instruction
 struct Variable
 {
     char name[ARG_SIZE_MAX+1];
+    char pfx[FN_NAME_SIZE_MAX+1];
     size_t size;
     struct Variable *next;
 };
@@ -65,7 +66,6 @@ struct Context
 {
     struct Instruction *instr;
     struct Register *reg;
-    char namePfx[FN_NAME_SIZE_MAX];
 };
 
 

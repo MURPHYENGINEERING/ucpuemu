@@ -20,7 +20,7 @@
 
 myfun:
   ld a __myfun_arg1
-  ld b __myfun_two
+  ld b two
   add a b
   store __myfun_arg1 a
   ret  
