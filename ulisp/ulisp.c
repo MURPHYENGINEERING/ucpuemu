@@ -58,6 +58,8 @@ static int translate_file(FILE *inFile, FILE *outFile)
         instr = instr->next;
     }
 
+    fprintf(outFile, "  halt\n\n");
+
     struct Function *fn = prog.functions;
     while (fn) {
         if (fn->name) {

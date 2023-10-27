@@ -8,6 +8,7 @@
 #define ARG_SIZE_MAX 32
 #define N_ARGS_MAX 2
 #define N_REGISTERS 4
+#define FN_NAME_SIZE_MAX 256
 #define N_FN_ARGS_MAX 32
 #define FN_ARG_SIZE_MAX 32
 
@@ -57,6 +58,14 @@ struct Program
     struct Instruction *instructions;
     struct Function *functions;
     struct Register registers[N_REGISTERS];
+};
+
+
+struct Context
+{
+    struct Instruction *instr;
+    struct Register *reg;
+    char namePfx[FN_NAME_SIZE_MAX];
 };
 
 

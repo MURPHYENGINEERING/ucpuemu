@@ -207,10 +207,10 @@ static void register_release(struct Register *reg)
 }
 
 
-static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Instruction *instructions, struct Register *resultReg);
+static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Context *ctx);
 
 
-static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct Instruction *instructions, struct Register *resultReg)
+static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct Context *ctx)
 {
     // Evaluate the LHS node as a variable name
     ast = ast->next;
@@ -218,43 +218,53 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
         printf("! Attempting to assign to a node that doesn't evaluate to a name\n");
         return NULL;
     }
-    struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
+
+    char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+    sprintf(buf, "%s%s", ctx->namePfx, ast->token->cvalue);
+    struct Variable *lhsVar = var_find(prog->vars, buf);
     if (!lhsVar) {
-        lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
+        lhsVar = var_add(&prog->vars, buf, 1);
         printf("Defined variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
     }
 
     // Evaluate the RHS node to a value
     ast = ast->next;
-    compile_node(ast, prog, instructions, resultReg);
+    compile_node(ast, prog, ctx);
 
-    instr_store(instructions, lhsVar->name, resultReg->name);
+    instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
 
     return ast;
 }
 
 
-static struct AST *compile_binary_operator(struct AST *ast, struct Program *prog, struct Instruction *instructions, struct Register *resultReg, struct Instruction *(*operator)(struct Instruction*, const char*, const char*))
+static struct AST *compile_binary_operator(
+    struct AST *ast, 
+    struct Program *prog, 
+    struct Context *ctx, 
+    struct Instruction *(*operator)(struct Instruction*, const char*, const char*)
+)
 {
     // Evaluate LHS node to a value
     ast = ast->next;
-    compile_node(ast, prog, instructions, resultReg);
+    compile_node(ast, prog, ctx);
 
-    struct Register *rhsResultReg = register_claim(prog);
+    struct Context rhsCtx;
+    memcpy(&rhsCtx, ctx, sizeof(rhsCtx));
+    rhsCtx.reg = register_claim(prog);
 
     // Evaluate RHS node to a value
     ast = ast->next;
-    compile_node(ast, prog, instructions, rhsResultReg);
+    compile_node(ast, prog, &rhsCtx);
 
-    operator(instructions, resultReg->name, rhsResultReg->name);
+    operator(ctx->instr, ctx->reg->name, rhsCtx.reg->name);
     
-    register_release(rhsResultReg);
+    register_release(rhsCtx.reg);
 
     return ast;
 }
 
 
-static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Register *resultReg)
+static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Context *ctx)
 {
     ast = ast->next;
     if (ast->type != AST_NAME) {
@@ -267,11 +277,18 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Regi
 
     ast = ast->next;
 
+    struct Context fnCtx;
+    memcpy(&fnCtx, ctx, sizeof(fnCtx));
+    fnCtx.instr = fn->instructions;
+    sprintf(fnCtx.namePfx, "__%s_", fn->name);
+
     while (ast->type == AST_NAME) { 
         fn->args[fn->nArgs++] = ast->token->cvalue;
-        struct Variable *var = var_find(prog->vars, ast->token->cvalue);
+        char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+        sprintf(buf, "%s%s", fnCtx.namePfx, ast->token->cvalue);
+        struct Variable *var = var_find(prog->vars, buf);
         if (!var) {
-            var = var_add(&prog->vars, ast->token->cvalue, 1);
+            var = var_add(&prog->vars, buf, 1);
         }
         ast = ast->next;
     }
@@ -281,7 +298,7 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Regi
         return NULL;
     }
 
-    ast = compile_node(ast, prog, fn->instructions, resultReg);
+    ast = compile_node(ast, prog, &fnCtx);
 
     struct Instruction *instr = instruction_emplace(fn->instructions);
     strncpy(instr->opcode, "ret", OPCODE_SIZE_MAX);
@@ -290,52 +307,54 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Regi
 }
 
 
-static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Instruction *instructions, struct Register *resultReg)
+static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Context *ctx)
 {
     if (!ast) {
         return NULL;
     }
 
     int didClaimReg = 0;
-    if (resultReg == NULL) {
-        resultReg = register_claim(prog);
+    if (ctx->reg == NULL) {
+        ctx->reg = register_claim(prog);
         didClaimReg = 1;
     }
 
     if (ast->type == AST_LIST) {
         struct AST *list = ast->child;
         while (list) {
-            list = compile_node(list, prog, instructions, resultReg);
+            list = compile_node(list, prog, ctx);
         }
 
     } else if (ast->type == AST_ASSIGN) {
-        ast = compile_assign(ast, prog, instructions, resultReg);
+        ast = compile_assign(ast, prog, ctx);
 
     } else if (ast->type == AST_PLUS) {
-        ast = compile_binary_operator(ast, prog, instructions, resultReg, &instr_add);
+        ast = compile_binary_operator(ast, prog, ctx, &instr_add);
 
     } else if (ast->type == AST_MINUS) {
-        ast = compile_binary_operator(ast, prog, instructions, resultReg, &instr_sub);
+        ast = compile_binary_operator(ast, prog, ctx, &instr_sub);
     
     } else if (ast->type == AST_TIMES) {
-        ast = compile_binary_operator(ast, prog, instructions, resultReg, &instr_mul);
+        ast = compile_binary_operator(ast, prog, ctx, &instr_mul);
 
     } else if (ast->type == AST_DIVIDE) {
-        ast = compile_binary_operator(ast, prog, instructions, resultReg, &instr_div);
+        ast = compile_binary_operator(ast, prog, ctx, &instr_div);
     
     } else if (ast->type == AST_NAME) {
         if (strcmp(ast->token->cvalue, "fn") == 0) {
-            ast = compile_fn(ast, prog, resultReg);
+            ast = compile_fn(ast, prog, ctx);
         } else {
-            instr_ld(instructions, resultReg->name, ast->token->cvalue);
+            char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+            sprintf(buf, "%s%s", ctx->namePfx, ast->token->cvalue);
+            instr_ld(ctx->instr, ctx->reg->name, buf);
         }
 
     } else if (ast->type == AST_CONST) {
-        instr_ldi(instructions, resultReg->name, ast->token->ivalue);
+        instr_ldi(ctx->instr, ctx->reg->name, ast->token->ivalue);
     }
 
     if (didClaimReg) {
-        register_release(resultReg);
+        register_release(ctx->reg);
     }
     
     return ast ? ast->next : NULL;
@@ -344,7 +363,10 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct In
 
 struct AST *compile(struct AST *ast, struct Program *prog)
 {
-    ast = compile_node(ast, prog, prog->instructions, NULL);
+    struct Context ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.instr = prog->instructions;
+    ast = compile_node(ast, prog, &ctx);
     return ast;
 }
 
