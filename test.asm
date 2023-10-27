@@ -1,7 +1,5 @@
   ; test.ulisp
     
-  ldi a 2
-  store arg1 a
   ldi a 1
   ldi b 1
   add a b
@@ -22,12 +20,11 @@
 
 myfun:
   ld a __myfun_arg1
-  ldi b 2
+  ld b __myfun_two
   add a b
+  store __myfun_arg1 a
   ret  
 
-arg1:
-  word 0x0000
 __myfun_arg1:
   word 0x0000
 eight:
