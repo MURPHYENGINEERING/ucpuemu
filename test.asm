@@ -12,8 +12,8 @@
   div b c
   add a b
   store eight a
-  ld a eight
-  ld b two
+  ld a arg2
+  ld b arg1
   add a b
   store ten a
   halt
@@ -23,6 +23,11 @@ myfun:
   ld b two
   add a b
   store __myfun_arg1 a
+  ret  
+otherfun:
+  ld a arg1
+  ld b arg1
+  add a b
   ret  
 
 __myfun_arg1:

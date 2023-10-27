@@ -229,9 +229,13 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
     ast = ast->next;
     compile_node(ast, prog, ctx);
 
-    char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-    snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "%s%s", lhsVar->pfx, lhsVar->name);
-    instr_store(ctx->instr, buf, ctx->reg->name);
+    if (lhsVar->fnLocal && lhsVar->fnLocal == ctx->fn) {
+        char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+        snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "__%s_%s", lhsVar->fnLocal->name, lhsVar->name);
+        instr_store(ctx->instr, buf, ctx->reg->name);
+    } else {
+        instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
+    }
 
     return ast;
 }
@@ -279,6 +283,7 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Cont
 
     struct Context fnCtx;
     memcpy(&fnCtx, ctx, sizeof(fnCtx));
+    fnCtx.fn = fn;
     fnCtx.instr = fn->instructions;
 
     while (ast->type == AST_NAME) { 
@@ -286,7 +291,7 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Cont
         struct Variable *var = var_find(prog->vars, ast->token->cvalue);
         if (!var) {
             var = var_add(&prog->vars, ast->token->cvalue, 1);
-            snprintf(var->pfx, FN_NAME_SIZE_MAX, "__%s_", fn->name);
+            var->fnLocal = fn;
         }
         ast = ast->next;
     }
@@ -344,10 +349,14 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
         } else {
             struct Variable *var = var_find(prog->vars, ast->token->cvalue);
             if  (var) {
-                char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-                snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "%s%s", 
-                        var->pfx, var->name);
-                instr_ld(ctx->instr, ctx->reg->name, buf);
+                if (var->fnLocal && var->fnLocal == ctx->fn) {
+                    char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
+                    snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "__%s_%s", 
+                            var->fnLocal->name, var->name);
+                    instr_ld(ctx->instr, ctx->reg->name, buf);
+                } else {
+                    instr_ld(ctx->instr, ctx->reg->name, ast->token->cvalue);
+                }
             } else {
                 instr_ld(ctx->instr, ctx->reg->name, ast->token->cvalue);
             }

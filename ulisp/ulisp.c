@@ -77,7 +77,11 @@ static int translate_file(FILE *inFile, FILE *outFile)
     
     struct Variable *var = prog.vars;
     while (var) {
-        fprintf(outFile, "%s%s:\n", var->pfx, var->name);
+        if (var->fnLocal) {
+            fprintf(outFile, "__%s_%s:\n", var->fnLocal->name, var->name);
+        } else {
+            fprintf(outFile, "%s:\n", var->name);
+        }
         for (size_t i = 0; i < var->size; ++i) {
             fprintf(outFile, "  word 0x0000\n");
         }

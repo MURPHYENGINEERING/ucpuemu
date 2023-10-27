@@ -13,6 +13,8 @@
 #define FN_ARG_SIZE_MAX 32
 
 struct AST;
+struct Function;
+struct Program;
 
 struct Instruction
 {
@@ -25,14 +27,12 @@ struct Instruction
 
 struct Variable
 {
-    char name[ARG_SIZE_MAX+1];
-    char pfx[FN_NAME_SIZE_MAX+1];
+    char name[ARG_SIZE_MAX+1]; 
     size_t size;
+    struct Function *fnLocal;
     struct Variable *next;
 };
 
-
-struct Program;
 
 struct Register
 {
@@ -66,6 +66,7 @@ struct Context
 {
     struct Instruction *instr;
     struct Register *reg;
+    struct Function *fn;
 };
 
 
