@@ -1,3 +1,5 @@
 (= three 0)
-(fn myfun arg1 arg2 (= three (+ arg1 arg2)))
+(fn myfun arg1 arg2 
+    (= three (+ arg1 arg2))
+)
 (myfun 1 2)
