@@ -321,7 +321,7 @@ get_address(bool emit)
   if (arg == NULL)
     expected("label or memory address");
 
-  if (isalpha(*arg)) {
+  if (*arg == '_' || isalpha(*arg)) {
     for (size_t i = 0; i < nLabels; ++i) {
       if (strcasecmp(arg, labels[i].name) == 0)
         return labels[i].addr;
@@ -640,7 +640,6 @@ translate_file(FILE* inFile, FILE* outFile)
       }
     }
 
-/*
     if (errno) {
       printf(
           "\n! Error reading line from input file (%d): %s",
@@ -648,7 +647,6 @@ translate_file(FILE* inFile, FILE* outFile)
           strerror(errno));
       break;
     }
-    */
   }
 }
 

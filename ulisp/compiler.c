@@ -220,6 +220,10 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
 
 static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct Context *ctx)
 {
+    if (!ctx->reg) {
+        ctx->reg = register_claim(prog);
+    }
+
     // Evaluate the LHS node as a variable name
     ast = ast->next;
     if (ast->type != AST_NAME) {
@@ -271,6 +275,9 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
 
     instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
 
+    register_release(ctx->reg);
+    ctx->reg = NULL;
+
     return ast;
 }
 
@@ -282,6 +289,9 @@ static struct AST *compile_binary_operator(
     struct Instruction *(*operator)(struct Instruction*, const char*, const char*)
 )
 {
+    if (!ctx->reg) {
+        ctx->reg = register_claim(prog);
+    }
     // Evaluate LHS node to a value
     ast = ast->next;
     compile_node(ast, prog, ctx);
@@ -297,6 +307,7 @@ static struct AST *compile_binary_operator(
     operator(ctx->instr, ctx->reg->name, rhsCtx.reg->name);
     
     register_release(rhsCtx.reg);
+    rhsCtx.reg = NULL;
 
     return ast;
 }
@@ -328,7 +339,7 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Cont
             var = var_add(&fn->vars, localVarName, 1);
             printf("Defined function argument %s of size %zu\n", var->name, var->size);
         }
-        free(localVarName);
+        fn->args[fn->nArgs++] = localVarName;
         ast = ast->next;
     }
 
@@ -353,7 +364,7 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
     }
 
     int didClaimReg = 0;
-    if (ctx->reg == NULL) {
+    if (!ctx->reg) {
         ctx->reg = register_claim(prog);
         didClaimReg = 1;
     }
@@ -392,15 +403,40 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
                 fn = fn->next;
             }
             if (fn) {
+                const char *fnName = ast->token->cvalue;
                 // Found a function matching this name
                 struct Instruction *instr = NULL;
+                // Iterate over arguments and load them into function-local
+                // variables
+                ast = ast->next;
+                size_t iarg = 0;
+                char *argName = fn->args[iarg];
+                while (ast) {
+                    if (iarg > fn->nArgs) {
+                        printf("! Too many arguments passed to function %s\n", fn->name);
+                        break;
+                    }
+                    // Make sure we have a register to load the argument into
+                    if (!ctx->reg) {
+                        ctx->reg = register_claim(prog);
+                    }
+                    ast = compile_node(ast, prog, ctx);
+                    if (ctx->fn) {
+                        instr_store(ctx->fn->instructions, fn->args[iarg], ctx->reg->name);
+                    } else {
+                        instr_store(prog->instructions, fn->args[iarg], ctx->reg->name);
+                    }
+                    register_release(ctx->reg);
+                    ctx->reg = NULL;
+                    ++iarg;
+                }
                 if (ctx->fn) {
                     instr = instruction_emplace(ctx->fn->instructions);
                 } else {
                     instr = instruction_emplace(prog->instructions);
                 }
                 strncpy(instr->opcode, "call", OPCODE_SIZE_MAX);                
-                strncpy(instr->args[0], ast->token->cvalue, ARG_SIZE_MAX);
+                strncpy(instr->args[0], fnName, ARG_SIZE_MAX);
             } else {
                 // Treat it like a variable reference and evaluate it to a load
                 struct Variable *var = NULL;
@@ -426,7 +462,7 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
         instr_ldi(ctx->instr, ctx->reg->name, ast->token->ivalue);
     }
 
-    if (didClaimReg) {
+    if (didClaimReg && ctx->reg) {
         register_release(ctx->reg);
     }
     
