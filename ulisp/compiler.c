@@ -31,7 +31,7 @@ static struct Function *function_new()
 {
     struct Function *fn = (struct Function*) malloc(sizeof(struct Function));
     memset(fn, 0, sizeof(*fn));
-    fn->instructions = (struct Instruction*) malloc(sizeof(struct Instruction));
+    fn->instructions = instruction_new(); 
     return fn;
 }
 
@@ -207,6 +207,14 @@ static void register_release(struct Register *reg)
 }
 
 
+static char *mangle_name(const char *fnName, const char *name)
+{
+    char *buf = (char*) malloc(FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1);
+    snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", fnName, name);
+    return buf;
+}
+
+
 static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Context *ctx);
 
 
@@ -228,16 +236,33 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
         vars = prog->vars;
     }
 
-    struct Variable *lhsVar = var_find(vars, ast->token->cvalue);
+    struct Variable *lhsVar = NULL;
+    char *localVarName = NULL;
+
+    if (ctx->fn) {
+        localVarName = mangle_name(ctx->fn->name, ast->token->cvalue); 
+        // Try to find a local variable first
+        lhsVar = var_find(ctx->fn->vars, localVarName);
+    }
     if (!lhsVar) {
+        // Try to find a global variable
+        lhsVar = var_find(prog->vars, ast->token->cvalue);
+    }
+    if (!lhsVar) {
+        // No variable found, define it
         if (fnLocal) {
-            char buf[FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1];
-            snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", ctx->fn->name, ast->token->cvalue);
-            lhsVar = var_add(&ctx->fn->vars, buf, 1);
+            // Define it in the local scope
+            lhsVar = var_add(&ctx->fn->vars, localVarName, 1);
+            printf("Defined local variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
         } else {
+            // Define it in the global scope
             lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
+            printf("Defined global variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
         }
-        printf("Defined variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
+    }
+
+    if (localVarName) {
+        free(localVarName);
     }
 
     // Evaluate the RHS node to a value
@@ -295,13 +320,15 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Cont
     fnCtx.fn = fn;
     fnCtx.instr = fn->instructions;
 
+    // Define arguments as local variables
     while (ast->type == AST_NAME) { 
-        char buf[FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1];
-        snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", fn->name, ast->token->cvalue);
-        struct Variable *var = var_find(fn->vars, buf);
+        char *localVarName = mangle_name(fn->name, ast->token->cvalue);
+        struct Variable *var = var_find(fn->vars, localVarName);
         if (!var) {
-            var = var_add(&fn->vars, buf, 1);
+            var = var_add(&fn->vars, localVarName, 1);
+            printf("Defined function argument %s of size %zu\n", var->name, var->size);
         }
+        free(localVarName);
         ast = ast->next;
     }
 
@@ -356,19 +383,42 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
         if (strcmp(ast->token->cvalue, "fn") == 0) {
             ast = compile_fn(ast, prog, ctx);
         } else {
-            struct Variable *var = var_find(prog->vars, ast->token->cvalue);
-            if  (var) {
-                instr_ld(ctx->instr, ctx->reg->name, var->name);
-            } else if (ctx->fn) {
-                char buf[FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1];
-                snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", ctx->fn->name, ast->token->cvalue);
-                var = var_find(ctx->fn->vars, buf);
+            // Is it a function call?
+            struct Function *fn = prog->functions;
+            while (fn) {
+                if (fn->name && strcmp(fn->name, ast->token->cvalue) == 0) {
+                    break;
+                }   
+                fn = fn->next;
+            }
+            if (fn) {
+                // Found a function matching this name
+                struct Instruction *instr = NULL;
+                if (ctx->fn) {
+                    instr = instruction_emplace(ctx->fn->instructions);
+                } else {
+                    instr = instruction_emplace(prog->instructions);
+                }
+                strncpy(instr->opcode, "call", OPCODE_SIZE_MAX);                
+                strncpy(instr->args[0], ast->token->cvalue, ARG_SIZE_MAX);
+            } else {
+                // Treat it like a variable reference and evaluate it to a load
+                struct Variable *var = NULL;
+                if (ctx->fn) {
+                    // Try to find a local variable first
+                    char *localVarName = mangle_name(ctx->fn->name, ast->token->cvalue);
+                    var = var_find(ctx->fn->vars, localVarName);
+                    free(localVarName);
+                }
+                if  (!var) {
+                    // Find a global variable
+                    var = var_find(prog->vars, ast->token->cvalue);
+                }
                 if (var) {
                     instr_ld(ctx->instr, ctx->reg->name, var->name);
+                } else {
+                    printf("! Reference to unknown variable: %s\n", ast->token->cvalue);
                 }
-            } else {
-                printf("! Unknown variable: %s\n", ast->token->cvalue);
-                return NULL;
             }
         }
 

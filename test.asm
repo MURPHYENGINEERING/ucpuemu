@@ -12,18 +12,22 @@
   div b c
   add a b
   store eight a
+  call myfun 
+  ldi a 1
+  ldi a 2
   halt
 
-myfun:
-  ld a __myfun_arg1
-  ld b __myfun_arg2
-  add a b
-  store __myfun_two a
-  ret  
 otherfun:
   ld a __otherfun_arg1
   ld b __otherfun_arg2
   add a b
+  store __otherfun_two a
+  ret  
+myfun:
+  ld a __myfun_arg1
+  ld b __myfun_arg2
+  add a b
+  store two a
   ret  
 
 eight:
@@ -32,13 +36,13 @@ two:
   word 0x0000
 three:
   word 0x0000
-__myfun_arg1:
-  word 0x0000
-__myfun_arg2:
-  word 0x0000
-__myfun_two:
-  word 0x0000
 __otherfun_arg1:
   word 0x0000
 __otherfun_arg2:
+  word 0x0000
+__otherfun_two:
+  word 0x0000
+__myfun_arg1:
+  word 0x0000
+__myfun_arg2:
   word 0x0000
