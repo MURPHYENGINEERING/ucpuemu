@@ -219,9 +219,24 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
         return NULL;
     }
 
-    struct Variable *lhsVar = var_find(prog->vars, ast->token->cvalue);
+    struct Variable *vars = NULL;
+    int fnLocal = 0;
+    if (ctx->fn) {
+        vars = ctx->fn->vars;
+        fnLocal = 1;
+    } else {
+        vars = prog->vars;
+    }
+
+    struct Variable *lhsVar = var_find(vars, ast->token->cvalue);
     if (!lhsVar) {
-        lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
+        if (fnLocal) {
+            char buf[FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1];
+            snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", ctx->fn->name, ast->token->cvalue);
+            lhsVar = var_add(&ctx->fn->vars, buf, 1);
+        } else {
+            lhsVar = var_add(&prog->vars, ast->token->cvalue, 1);
+        }
         printf("Defined variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
     }
 
@@ -229,13 +244,7 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
     ast = ast->next;
     compile_node(ast, prog, ctx);
 
-    if (lhsVar->fnLocal && lhsVar->fnLocal == ctx->fn) {
-        char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-        snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "__%s_%s", lhsVar->fnLocal->name, lhsVar->name);
-        instr_store(ctx->instr, buf, ctx->reg->name);
-    } else {
-        instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
-    }
+    instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
 
     return ast;
 }
@@ -287,11 +296,11 @@ static struct AST *compile_fn(struct AST *ast, struct Program *prog, struct Cont
     fnCtx.instr = fn->instructions;
 
     while (ast->type == AST_NAME) { 
-        fn->args[fn->nArgs++] = ast->token->cvalue;
-        struct Variable *var = var_find(prog->vars, ast->token->cvalue);
+        char buf[FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1];
+        snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", fn->name, ast->token->cvalue);
+        struct Variable *var = var_find(fn->vars, buf);
         if (!var) {
-            var = var_add(&prog->vars, ast->token->cvalue, 1);
-            var->fnLocal = fn;
+            var = var_add(&fn->vars, buf, 1);
         }
         ast = ast->next;
     }
@@ -349,16 +358,17 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
         } else {
             struct Variable *var = var_find(prog->vars, ast->token->cvalue);
             if  (var) {
-                if (var->fnLocal && var->fnLocal == ctx->fn) {
-                    char buf[FN_NAME_SIZE_MAX+ARG_SIZE_MAX+1];
-                    snprintf(buf, FN_NAME_SIZE_MAX+ARG_SIZE_MAX, "__%s_%s", 
-                            var->fnLocal->name, var->name);
-                    instr_ld(ctx->instr, ctx->reg->name, buf);
-                } else {
-                    instr_ld(ctx->instr, ctx->reg->name, ast->token->cvalue);
+                instr_ld(ctx->instr, ctx->reg->name, var->name);
+            } else if (ctx->fn) {
+                char buf[FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1];
+                snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", ctx->fn->name, ast->token->cvalue);
+                var = var_find(ctx->fn->vars, buf);
+                if (var) {
+                    instr_ld(ctx->instr, ctx->reg->name, var->name);
                 }
             } else {
-                instr_ld(ctx->instr, ctx->reg->name, ast->token->cvalue);
+                printf("! Unknown variable: %s\n", ast->token->cvalue);
+                return NULL;
             }
         }
 

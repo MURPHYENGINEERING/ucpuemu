@@ -12,31 +12,33 @@
   div b c
   add a b
   store eight a
-  ld a arg2
-  ld b arg1
-  add a b
-  store ten a
   halt
 
 myfun:
   ld a __myfun_arg1
-  ld b two
+  ld b __myfun_arg2
   add a b
-  store __myfun_arg1 a
+  store __myfun_two a
   ret  
 otherfun:
-  ld a arg1
-  ld b arg1
+  ld a __otherfun_arg1
+  ld b __otherfun_arg2
   add a b
   ret  
 
-__myfun_arg1:
-  word 0x0000
 eight:
   word 0x0000
 two:
   word 0x0000
 three:
   word 0x0000
-ten:
+__myfun_arg1:
+  word 0x0000
+__myfun_arg2:
+  word 0x0000
+__myfun_two:
+  word 0x0000
+__otherfun_arg1:
+  word 0x0000
+__otherfun_arg2:
   word 0x0000

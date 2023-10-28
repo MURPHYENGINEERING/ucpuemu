@@ -640,6 +640,7 @@ translate_file(FILE* inFile, FILE* outFile)
       }
     }
 
+/*
     if (errno) {
       printf(
           "\n! Error reading line from input file (%d): %s",
@@ -647,6 +648,7 @@ translate_file(FILE* inFile, FILE* outFile)
           strerror(errno));
       break;
     }
+    */
   }
 }
 

@@ -77,16 +77,25 @@ static int translate_file(FILE *inFile, FILE *outFile)
     
     struct Variable *var = prog.vars;
     while (var) {
-        if (var->fnLocal) {
-            fprintf(outFile, "__%s_%s:\n", var->fnLocal->name, var->name);
-        } else {
-            fprintf(outFile, "%s:\n", var->name);
-        }
+        fprintf(outFile, "%s:\n", var->name);
         for (size_t i = 0; i < var->size; ++i) {
             fprintf(outFile, "  word 0x0000\n");
         }
-        
         var = var->next;
+    }
+    fn = prog.functions;
+    while (fn) {
+        if (fn->name) {
+            var = fn->vars;
+            while (var) {
+                fprintf(outFile, "%s:\n", var->name);
+                for (size_t i = 0; i < var->size; ++i) {
+                    fprintf(outFile, "  word 0x0000\n");
+                }
+                var = var->next;
+            }
+        }
+        fn = fn->next;
     }
 
     return 0;

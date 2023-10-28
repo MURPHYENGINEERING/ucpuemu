@@ -29,7 +29,6 @@ struct Variable
 {
     char name[ARG_SIZE_MAX+1]; 
     size_t size;
-    struct Function *fnLocal;
     struct Variable *next;
 };
 
@@ -49,6 +48,7 @@ struct Function
     char *args[N_FN_ARGS_MAX];
     size_t nArgs;
     struct Instruction *instructions;
+    struct Variable *vars;
     struct Function *next;
 };
 
