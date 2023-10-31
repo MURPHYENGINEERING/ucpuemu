@@ -209,7 +209,9 @@ static void register_release(struct Register *reg)
 
 static char *mangle_name(const char *fnName, const char *name)
 {
-    char *buf = (char*) malloc(FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX+1);
+    char *buf = (char*) malloc(
+        strnlen(fnName, FN_NAME_SIZE_MAX) + strnlen(name, FN_ARG_SIZE_MAX) + 4
+    );
     snprintf(buf, FN_NAME_SIZE_MAX+FN_ARG_SIZE_MAX, "__%s_%s", fnName, name);
     return buf;
 }
@@ -231,15 +233,6 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
         return NULL;
     }
 
-    struct Variable *vars = NULL;
-    int fnLocal = 0;
-    if (ctx->fn) {
-        vars = ctx->fn->vars;
-        fnLocal = 1;
-    } else {
-        vars = prog->vars;
-    }
-
     struct Variable *lhsVar = NULL;
     char *localVarName = NULL;
 
@@ -254,7 +247,7 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
     }
     if (!lhsVar) {
         // No variable found, define it
-        if (fnLocal) {
+        if (ctx->fn) {
             // Define it in the local scope
             lhsVar = var_add(&ctx->fn->vars, localVarName, 1);
             printf("Defined local variable '%s' of size %zu\n", lhsVar->name, lhsVar->size);
@@ -274,9 +267,6 @@ static struct AST *compile_assign(struct AST *ast, struct Program *prog, struct 
     compile_node(ast, prog, ctx);
 
     instr_store(ctx->instr, lhsVar->name, ctx->reg->name);
-
-    register_release(ctx->reg);
-    ctx->reg = NULL;
 
     return ast;
 }
@@ -307,7 +297,6 @@ static struct AST *compile_binary_operator(
     operator(ctx->instr, ctx->reg->name, rhsCtx.reg->name);
     
     register_release(rhsCtx.reg);
-    rhsCtx.reg = NULL;
 
     return ast;
 }
@@ -403,22 +392,21 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
                 fn = fn->next;
             }
             if (fn) {
-                const char *fnName = ast->token->cvalue;
                 // Found a function matching this name
-                struct Instruction *instr = NULL;
                 // Iterate over arguments and load them into function-local
                 // variables
                 ast = ast->next;
                 size_t iarg = 0;
-                char *argName = fn->args[iarg];
                 while (ast) {
                     if (iarg > fn->nArgs) {
                         printf("! Too many arguments passed to function %s\n", fn->name);
                         break;
                     }
                     // Make sure we have a register to load the argument into
+                    int didClaimReg = 0;
                     if (!ctx->reg) {
                         ctx->reg = register_claim(prog);
+                        didClaimReg = 1;
                     }
                     ast = compile_node(ast, prog, ctx);
                     if (ctx->fn) {
@@ -426,17 +414,20 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
                     } else {
                         instr_store(prog->instructions, fn->args[iarg], ctx->reg->name);
                     }
-                    register_release(ctx->reg);
-                    ctx->reg = NULL;
+                    if (didClaimReg) {
+                        register_release(ctx->reg);
+                        ctx->reg = NULL;
+                    }
                     ++iarg;
                 }
+                struct Instruction *instr = NULL;
                 if (ctx->fn) {
                     instr = instruction_emplace(ctx->fn->instructions);
                 } else {
                     instr = instruction_emplace(prog->instructions);
                 }
                 strncpy(instr->opcode, "call", OPCODE_SIZE_MAX);                
-                strncpy(instr->args[0], fnName, ARG_SIZE_MAX);
+                strncpy(instr->args[0], fn->name, ARG_SIZE_MAX);
             } else {
                 // Treat it like a variable reference and evaluate it to a load
                 struct Variable *var = NULL;
