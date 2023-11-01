@@ -378,74 +378,71 @@ static struct AST *compile_node(struct AST *ast, struct Program *prog, struct Co
 
     } else if (ast->type == AST_DIVIDE) {
         ast = compile_binary_operator(ast, prog, ctx, &instr_div);
-    
+    } else if (ast->type == AST_FN) {
+        ast = compile_fn(ast, prog, ctx);
     } else if (ast->type == AST_NAME) {
-        if (strcmp(ast->token->cvalue, "fn") == 0) {
-            ast = compile_fn(ast, prog, ctx);
-        } else {
-            // Is it a function call?
-            struct Function *fn = prog->functions;
-            while (fn) {
-                if (fn->name && strcmp(fn->name, ast->token->cvalue) == 0) {
+        // Is it a function call?
+        struct Function *fn = prog->functions;
+        while (fn) {
+            if (fn->name && strcmp(fn->name, ast->token->cvalue) == 0) {
+                break;
+            }   
+            fn = fn->next;
+        }
+        if (fn) {
+            // Found a function matching this name
+            // Iterate over arguments and load them into function-local
+            // variables
+            ast = ast->next;
+            size_t iarg = 0;
+            while (ast) {
+                if (iarg > fn->nArgs) {
+                    printf("! Too many arguments passed to function %s\n", fn->name);
                     break;
-                }   
-                fn = fn->next;
+                }
+                // Make sure we have a register to load the argument into
+                int didClaimReg = 0;
+                if (!ctx->reg) {
+                    ctx->reg = register_claim(prog);
+                    didClaimReg = 1;
+                }
+                ast = compile_node(ast, prog, ctx);
+                if (ctx->fn) {
+                    instr_store(ctx->fn->instructions, fn->args[iarg], ctx->reg->name);
+                } else {
+                    instr_store(prog->instructions, fn->args[iarg], ctx->reg->name);
+                }
+                if (didClaimReg) {
+                    register_release(ctx->reg);
+                    ctx->reg = NULL;
+                }
+                ++iarg;
             }
-            if (fn) {
-                // Found a function matching this name
-                // Iterate over arguments and load them into function-local
-                // variables
-                ast = ast->next;
-                size_t iarg = 0;
-                while (ast) {
-                    if (iarg > fn->nArgs) {
-                        printf("! Too many arguments passed to function %s\n", fn->name);
-                        break;
-                    }
-                    // Make sure we have a register to load the argument into
-                    int didClaimReg = 0;
-                    if (!ctx->reg) {
-                        ctx->reg = register_claim(prog);
-                        didClaimReg = 1;
-                    }
-                    ast = compile_node(ast, prog, ctx);
-                    if (ctx->fn) {
-                        instr_store(ctx->fn->instructions, fn->args[iarg], ctx->reg->name);
-                    } else {
-                        instr_store(prog->instructions, fn->args[iarg], ctx->reg->name);
-                    }
-                    if (didClaimReg) {
-                        register_release(ctx->reg);
-                        ctx->reg = NULL;
-                    }
-                    ++iarg;
-                }
-                struct Instruction *instr = NULL;
-                if (ctx->fn) {
-                    instr = instruction_emplace(ctx->fn->instructions);
-                } else {
-                    instr = instruction_emplace(prog->instructions);
-                }
-                strncpy(instr->opcode, "call", OPCODE_SIZE_MAX);                
-                strncpy(instr->args[0], fn->name, ARG_SIZE_MAX);
+            struct Instruction *instr = NULL;
+            if (ctx->fn) {
+                instr = instruction_emplace(ctx->fn->instructions);
             } else {
-                // Treat it like a variable reference and evaluate it to a load
-                struct Variable *var = NULL;
-                if (ctx->fn) {
-                    // Try to find a local variable first
-                    char *localVarName = mangle_name(ctx->fn->name, ast->token->cvalue);
-                    var = var_find(ctx->fn->vars, localVarName);
-                    free(localVarName);
-                }
-                if  (!var) {
-                    // Find a global variable
-                    var = var_find(prog->vars, ast->token->cvalue);
-                }
-                if (var) {
-                    instr_ld(ctx->instr, ctx->reg->name, var->name);
-                } else {
-                    printf("! Reference to unknown variable: %s\n", ast->token->cvalue);
-                }
+                instr = instruction_emplace(prog->instructions);
+            }
+            strncpy(instr->opcode, "call", OPCODE_SIZE_MAX);                
+            strncpy(instr->args[0], fn->name, ARG_SIZE_MAX);
+        } else {
+            // Treat it like a variable reference and evaluate it to a load
+            struct Variable *var = NULL;
+            if (ctx->fn) {
+                // Try to find a local variable first
+                char *localVarName = mangle_name(ctx->fn->name, ast->token->cvalue);
+                var = var_find(ctx->fn->vars, localVarName);
+                free(localVarName);
+            }
+            if  (!var) {
+                // Find a global variable
+                var = var_find(prog->vars, ast->token->cvalue);
+            }
+            if (var) {
+                instr_ld(ctx->instr, ctx->reg->name, var->name);
+            } else {
+                printf("! Reference to unknown variable: %s\n", ast->token->cvalue);
             }
         }
 

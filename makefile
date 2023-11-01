@@ -9,7 +9,7 @@ test.rom: test.asm
 	uasm/build/uasm build/test.asm build/test.rom
 
 test.asm: test.ulisp
-	ulisp/build/ulisp test.ulisp build/test.asm
+	ulisp/build/ulispc test.ulisp build/test.asm
 
 clean:
 	find build/ -type f -maxdepth 1 -delete

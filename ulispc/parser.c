@@ -37,6 +37,12 @@ struct Token *parse(struct Token *t, struct AST *ast)
                     break;
                 }
             }
+            if (ast->type == AST_NAME) {
+                if (strncmp(t->cvalue, "fn", 2) == 0) {
+                    ast->type = AST_FN;
+                }
+            }
+            
             ast->token = t;
             // Next token
             t = t->next;
